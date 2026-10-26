@@ -1,0 +1,194 @@
+import { useEffect, useState } from 'react';
+import { LuCrosshair, LuMapPin, LuPencil, LuPlus, LuTrash2, LuThermometer, LuShieldCheck } from 'react-icons/lu';
+import * as db from '../db';
+import type { Apiary, Hive, Profile, Weather } from '../db';
+import { PROVINCES, fetchWeather, getPosition, inspectionWeatherVerdict, roundCoord, scoreTone, statusInfo } from '../lib';
+import { getSettings } from '../settings';
+import { Empty, Field, Hex, ListLink, SyncChip, Topbar, back, go, toast } from '../ui';
+import { loadSummaries } from './Home';
+
+export function ApiaryList() {
+  const data = db.useLive(loadSummaries);
+  return (
+    <>
+      <Topbar title="Apiaries" right={<SyncChip />} />
+      {data && data.apiaries.length === 0 && (
+        <Empty title="No apiaries yet" text="Add the sites where your hives stand: your garden, a farm, a pollination block."
+          action={<a className="btn" href="#/apiary/new"><LuPlus /> Add apiary</a>} />
+      )}
+      {data && data.apiaries.length > 0 && (
+        <>
+          <div className="list">
+            {data.apiaries.sort((a, b) => a.name.localeCompare(b.name)).map((a) => {
+              const hs = data.hives.filter((h) => h.hive.apiary_id === a.id);
+              const flagged = hs.filter((h) => h.reasons.length).length;
+              return (
+                <ListLink key={a.id} href={`/apiary/${a.id}`}
+                  left={<Hex size={44} label={<span style={{ fontSize: 15 }}>{hs.length}</span>} tone={flagged ? 'warn' : 'good'} />}
+                  title={a.name}
+                  sub={`${a.province || 'Province not set'} · ${hs.length} hive${hs.length === 1 ? '' : 's'}${flagged ? ` · ${flagged} need attention` : ''}`} />
+              );
+            })}
+          </div>
+          <a className="btn secondary" href="#/apiary/new" style={{ marginTop: 14 }}><LuPlus /> Add apiary</a>
+        </>
+      )}
+    </>
+  );
+}
+
+export function ApiaryDetail({ id }: { id: string }) {
+  const data = db.useLive(async () => {
+    const all = await loadSummaries();
+    return { apiary: all.apiaries.find((a) => a.id === id), hives: all.hives.filter((h) => h.hive.apiary_id === id) };
+  }, [id]);
+  const [weather, setWeather] = useState<Weather | null>();
+  const apiary = data?.apiary;
+  useEffect(() => {
+    if (apiary?.lat != null && apiary.lng != null && navigator.onLine && getSettings().weather) {
+      fetchWeather(apiary.lat, apiary.lng).then(setWeather);
+    }
+  }, [apiary?.lat, apiary?.lng]);
+
+  if (!data) return null;
+  if (!apiary) return (<><Topbar title="Apiary" backTo="/apiaries" /><Empty title="Apiary not found" text="It may have been deleted." /></>);
+  const verdict = inspectionWeatherVerdict(weather);
+
+  return (
+    <>
+      <Topbar title={apiary.name} backTo="/apiaries" right={<a className="icon-btn" href={`#/apiary/${id}/edit`} aria-label="Edit apiary"><LuPencil /></a>} />
+      <p className="muted" style={{ marginTop: 0 }}>
+        {apiary.province || 'Province not set'} ·{' '}
+        {apiary.location_precision === 'precise' ? 'Exact location saved' : apiary.location_precision === 'approximate' ? 'Approximate location (about 1 km)' : 'No location saved'}
+      </p>
+
+      {weather && (
+        <div className={`banner ${verdict?.ok ? 'good' : 'warn'}`} style={{ marginBottom: 12 }}>
+          <LuThermometer />
+          <div>
+            <b>{Math.round(weather.temp ?? 0)}°C · wind {Math.round(weather.wind ?? 0)} km/h</b>
+            <p>{verdict?.text}</p>
+          </div>
+        </div>
+      )}
+
+      <div className="row between">
+        <h3 className="h2">Hives</h3>
+        <a className="btn small secondary" href={`#/hive/new?apiary=${id}`}><LuPlus /> Add hive</a>
+      </div>
+      {data.hives.length === 0 ? (
+        <Empty title="No hives here yet" text="Add each hive box at this site. You can give it a name like 'Hive 1' or 'Aloe row 3'."
+          action={<a className="btn" href={`#/hive/new?apiary=${id}`}><LuPlus /> Add first hive</a>} />
+      ) : (
+        <div className="hex-grid">
+          {data.hives.sort((a, b) => a.hive.name.localeCompare(b.hive.name, undefined, { numeric: true })).map(({ hive, last, reasons }) => (
+            <a key={hive.id} className="hex-tile" href={`#/hive/${hive.id}`}>
+              <Hex label={last?.score ?? '–'} tone={last?.afb_suspect ? 'bad' : last ? scoreTone(last.score) : statusInfo(hive.status).tone} />
+              <span className="hex-name">{hive.name}</span>
+              <span className={`hex-sub ${reasons.length ? 'tone-warn' : ''}`}>{reasons[0] || statusInfo(hive.status).label}</span>
+            </a>
+          ))}
+        </div>
+      )}
+
+      {(apiary.landowner || apiary.permission_notes || apiary.forage_notes || apiary.access_notes) && (
+        <>
+          <h3 className="h2">Site notes</h3>
+          <div className="card">
+            <dl className="kv">
+              {apiary.landowner && (<><dt>Landowner</dt><dd>{apiary.landowner}</dd></>)}
+              {apiary.permission_notes && (<><dt>Permission</dt><dd>{apiary.permission_notes}</dd></>)}
+              {apiary.forage_notes && (<><dt>Forage</dt><dd>{apiary.forage_notes}</dd></>)}
+              {apiary.access_notes && (<><dt>Access</dt><dd>{apiary.access_notes}</dd></>)}
+            </dl>
+          </div>
+        </>
+      )}
+      <p className="small muted row" style={{ marginTop: 16 }}><LuShieldCheck /> Private: only you can see this apiary and its location.</p>
+    </>
+  );
+}
+
+export function ApiaryForm({ id }: { id?: string }) {
+  const [a, setA] = useState<Partial<Apiary> | null>(id ? null : { location_precision: 'off' });
+  const [locating, setLocating] = useState(false);
+  useEffect(() => {
+    if (id) db.get<Apiary>('apiaries', id).then((r) => setA(r || {}));
+    else db.all<Profile>('profiles').then((p) => setA((x) => ({ ...x, province: x?.province || p[0]?.province })));
+  }, [id]);
+  if (!a) return null;
+  const set = (patch: Partial<Apiary>) => setA({ ...a, ...patch });
+
+  const locate = async (precision: 'approximate' | 'precise') => {
+    setLocating(true);
+    try {
+      const pos = await getPosition();
+      set({ lat: roundCoord(pos.coords.latitude, precision), lng: roundCoord(pos.coords.longitude, precision), location_precision: precision });
+      toast(precision === 'precise' ? 'Exact location saved' : 'Approximate location saved');
+    } catch (e: any) {
+      toast(e?.code === 1 ? 'Location permission was declined. You can still save the apiary.' : 'Could not get a location fix. Try again in the open.');
+    } finally {
+      setLocating(false);
+    }
+  };
+
+  const submit = async () => {
+    if (!a.name?.trim()) return toast('Give the apiary a name');
+    const rec = await db.save<Apiary>('apiaries', { ...(a as Apiary), id: a.id || db.uuid(), name: a.name.trim() });
+    toast('Apiary saved');
+    if (id) back(`/apiary/${rec.id}`);
+    else go(`/apiary/${rec.id}`, true);
+  };
+
+  const del = async () => {
+    const hives = (await db.all<Hive>('hives')).filter((h) => h.apiary_id === id);
+    if (!confirmDelete(`Delete ${a.name}${hives.length ? ` and its ${hives.length} hive records` : ''}?`)) return;
+    for (const h of hives) await db.remove('hives', h.id);
+    await db.remove('apiaries', id!);
+    toast('Apiary deleted');
+    go('/apiaries', true);
+  };
+
+  const mode = getSettings().locationMode;
+  return (
+    <>
+      <Topbar title={id ? 'Edit apiary' : 'New apiary'} backTo="/apiaries" />
+      <div className="stack">
+        <Field label="Name"><input className="input" value={a.name || ''} onChange={(e) => set({ name: e.target.value })} placeholder="e.g. Home garden, Oom Piet se plaas" autoFocus={!id} /></Field>
+        <Field label="Province">
+          <select className="input" value={a.province || ''} onChange={(e) => set({ province: e.target.value })}>
+            <option value="">Choose province</option>
+            {PROVINCES.map((p) => <option key={p}>{p}</option>)}
+          </select>
+        </Field>
+
+        <div className="card">
+          <div className="row" style={{ marginBottom: 8 }}><LuMapPin /><b className="grow">Location</b>
+            <span className="small muted">{a.location_precision === 'off' || !a.location_precision ? 'Not saved' : a.location_precision === 'precise' ? 'Exact' : 'About 1 km'}</span>
+          </div>
+          <p className="small muted" style={{ marginTop: 0 }}>Used once, when you tap a button, for weather and later for forage. Never tracked in the background. Only you can see it.</p>
+          {mode === 'off' ? (
+            <p className="small">Location is switched off in More › Privacy.</p>
+          ) : (
+            <div className="grid-2">
+              <button className="btn secondary" disabled={locating} onClick={() => locate('approximate')}><LuCrosshair /> {locating ? 'Finding…' : 'Approximate'}</button>
+              {mode === 'precise' && <button className="btn secondary" disabled={locating} onClick={() => locate('precise')}><LuMapPin /> Exact pin</button>}
+              {a.lat != null && <button className="btn ghost" onClick={() => set({ lat: null, lng: null, location_precision: 'off' })}>Clear</button>}
+            </div>
+          )}
+        </div>
+
+        <Field label="Landowner" hint="optional"><input className="input" value={a.landowner || ''} onChange={(e) => set({ landowner: e.target.value })} /></Field>
+        <Field label="Permission notes" hint="optional"><input className="input" value={a.permission_notes || ''} onChange={(e) => set({ permission_notes: e.target.value })} placeholder="e.g. Verbal OK, renew each spring" /></Field>
+        <Field label="Forage nearby" hint="optional"><input className="input" value={a.forage_notes || ''} onChange={(e) => set({ forage_notes: e.target.value })} placeholder="e.g. Spotted aloe, citrus, gums" /></Field>
+        <Field label="Access and security" hint="optional"><textarea className="input" value={a.access_notes || ''} onChange={(e) => set({ access_notes: e.target.value })} placeholder="Gate code, dogs, track condition" /></Field>
+        <button className="btn" onClick={submit}>Save apiary</button>
+        {id && <button className="btn ghost" onClick={del} style={{ color: 'var(--bad)' }}><LuTrash2 /> Delete apiary</button>}
+      </div>
+    </>
+  );
+}
+
+export function confirmDelete(message: string) {
+  return window.confirm(message);
+}
