@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { LuBox, LuSiren, LuFlower2, LuGraduationCap, LuHistory, LuQrCode, LuScanQrCode, LuCloud, LuDownload, LuLock, LuLogOut, LuRefreshCw, LuShieldCheck, LuTrash2, LuUser, LuPhone, LuMail } from 'react-icons/lu';
+import { LuBriefcase, LuBox, LuSiren, LuFlower2, LuGraduationCap, LuHistory, LuQrCode, LuScanQrCode, LuCloud, LuDownload, LuLock, LuLogOut, LuRefreshCw, LuShieldCheck, LuTrash2, LuUser, LuPhone, LuMail } from 'react-icons/lu';
 import * as db from '../db';
 import type { Profile } from '../db';
 import { APP_VERSION } from '../config';
@@ -75,6 +75,8 @@ function ProfileCard() {
         </select>
       </Field>
       <Field label="Beekeeper registration number"><input className="input" value={draft.registration_number || ''} onChange={(e) => setDraft({ ...draft, registration_number: e.target.value })} /></Field>
+      <Field label="Invoice details" hint="trading name, address, phone, payment details"><textarea className="input" value={draft.invoice_details || ''} onChange={(e) => setDraft({ ...draft, invoice_details: e.target.value })} /></Field>
+      <Field label="Public contact" hint="optional, only on honey passports you make public"><input className="input" value={draft.public_contact || ''} onChange={(e) => setDraft({ ...draft, public_contact: e.target.value })} placeholder="e.g. Lucille · honey@example.co.za" /></Field>
       <button className="btn secondary" onClick={save}>Save profile</button>
     </div>
   );
@@ -199,6 +201,7 @@ export function More() {
         <a className="btn secondary" href="#/learn"><LuGraduationCap /> Academy</a>
         <a className="btn secondary" href="#/log"><LuHistory /> Inspection log</a>
         <a className="btn secondary" href="#/traps"><LuBox /> Swarm traps</a>
+        <a className="btn secondary" href="#/business"><LuBriefcase /> Business</a>
       </div>
 
       <h3 className="h2">Hive labels</h3>

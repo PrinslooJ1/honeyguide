@@ -436,3 +436,34 @@ input[type='range'] { width: 100%; accent-color: var(--primary-strong); height: 
 .list-item > svg:first-child { width: 22px; height: 22px; flex: none; color: var(--primary-strong); }
 .chip { white-space: nowrap; }
 @media (max-width: 420px) { .grid-2.stack-narrow { grid-template-columns: 1fr; } }
+
+/* ---------- business documents: invoices and report packs (always black on white) ---------- */
+.doc { background: #fff; color: #1C1A17; border-radius: 12px; padding: 20px 18px; font-size: 14px; line-height: 1.45; box-shadow: var(--shadow); border: 1px solid #E8D9BC; }
+.doc * { filter: none; }
+.doc-head { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; border-bottom: 2px solid #F5A524; padding-bottom: 12px; margin-bottom: 14px; }
+.doc-title { font-family: var(--font-display); font-size: 26px; font-weight: 700; }
+.doc-muted { color: #6E6457; font-size: 13px; }
+.doc-pre { white-space: pre-line; }
+.doc-to { margin-bottom: 14px; }
+.doc-h { font-family: var(--font-display); font-size: 17px; margin: 16px 0 6px; }
+.doc-table { width: 100%; border-collapse: collapse; margin: 6px 0; }
+.doc-table th, .doc-table td { text-align: left; padding: 7px 6px; border-bottom: 1px solid #E8D9BC; vertical-align: top; }
+.doc-table th { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: #6E6457; }
+.doc-table td:nth-child(n+2), .doc-table th:nth-child(n+2) { white-space: nowrap; }
+.doc-table tfoot td { font-weight: 800; border-bottom: 0; border-top: 2px solid #1C1A17; }
+.doc-notes { margin-top: 12px; font-size: 13px; }
+.doc-foot { margin-top: 18px; }
+.doc-photos { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.doc-photo { margin: 0; break-inside: avoid; }
+.doc-photo img { width: 100%; border-radius: 6px; display: block; }
+.doc-photo figcaption { font-size: 12px; color: #6E6457; margin-top: 3px; }
+
+/* status steps for contracts */
+.steps { display: flex; gap: 4px; flex-wrap: wrap; }
+.steps span { flex: 1 1 auto; text-align: center; font-size: 12px; font-weight: 700; padding: 6px 8px; border-radius: 999px; background: var(--surface-2); color: var(--muted); }
+.steps span.on { background: var(--primary); color: var(--on-primary); }
+
+@media print {
+  .doc { box-shadow: none; border: 0; padding: 0; border-radius: 0; font-size: 11pt; }
+  body.printing-doc .print-only { display: none !important; }
+}

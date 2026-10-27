@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en-ZA">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Honey passport · Honeyguide</title>
+<meta name="description" content="Where and when this honey was made, shared by the beekeeper." />
+<link rel="icon" href="icons/icon-192.png" />
+<style>
+  :root { --bg: #FFF8EA; --surface: #fff; --text: #1C1A17; --muted: #6E6457; --border: #E8D9BC; --primary: #F5A524; color-scheme: light; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #15130F; --surface: #1F1C17; --text: #F6EEDF; --muted: #B3A794; --border: #3A342A; color-scheme: dark; } }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.55 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+  main { max-width: 520px; margin: 0 auto; padding: 28px 16px 56px; }
+  .brand { display: flex; gap: 10px; align-items: center; color: var(--muted); font-weight: 600; }
+  h1 { font-family: 'Iowan Old Style', Georgia, serif; font-size: 34px; line-height: 1.15; margin: 18px 0 6px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 18px; margin-top: 18px; }
+  dl { display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; margin: 0; }
+  dt { color: var(--muted); } dd { margin: 0; font-weight: 650; }
+  .hex { width: 54px; height: 60px; }
+  .muted { color: var(--muted); font-size: 14px; }
+  .code { font-family: ui-monospace, Menlo, Consolas, monospace; letter-spacing: .05em; }
+</style>
+</head>
+<body>
+<main>
+  <div class="brand">
+    <svg class="hex" viewBox="0 0 64 64" aria-hidden="true"><path d="M32 4 56 18v28L32 60 8 46V18z" fill="#F5A524"/><path d="M17 35c6-1 10-4 13-9 2 4 6 6 11 6l7-3c-2 5-6 8-11 9l-6 7-2-6c-4 0-8-1-12-4z" fill="#1C1A17"/></svg>
+    Honey passport
+  </div>
+  <div id="out"><p class="muted">Loading…</p></div>
+  <p class="muted" style="margin-top: 28px">Shared by the beekeeper through Honeyguide. Locations are never shown. <a href="privacy.html">Privacy</a></p>
+</main>
+<script type="module">
+  const URL_ = 'https://qtpawlgptjeebcqftxvx.supabase.co';
+  const KEY = 'sb_publishable_D6Lo3IYwL4u5XehXhsHyBQ_qq30zTnx';
+  const out = document.getElementById('out');
+  const code = decodeURIComponent((location.hash || '').slice(1) || new URLSearchParams(location.search).get('b') || '').toUpperCase();
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const show = (html) => { out.innerHTML = html; };
+  if (!/^HB-[A-Z0-9]{4,8}$/.test(code)) {
+    show('<h1>No batch code</h1><p>Scan the QR code on the jar to see its passport.</p>');
+  } else {
+    fetch(`${URL_}/rest/v1/rpc/get_passport`, {
+      method: 'POST', headers: { apikey: KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ p_code: code }),
+    }).then((r) => r.ok ? r.json() : Promise.reject(r.status)).then((rows) => {
+      const p = rows[0];
+      if (!p) return show(`<h1>Not shared</h1><p>The beekeeper has not made batch <span class="code">${esc(code)}</span> public.</p>`);
+      const month = p.harvest_month ? new Date(p.harvest_month).toLocaleDateString('en-ZA', { month: 'long', year: 'numeric' }) : null;
+      const rows2 = [
+        p.forage && ['Forage', esc(p.forage)],
+        p.province && ['Region', `${esc(p.province)}, South Africa`],
+        month && ['Harvested', esc(month)],
+        p.total_kg && ['Batch size', `${esc(p.total_kg)} kg`],
+        p.jar_size_g && ['Jar', p.jar_size_g >= 1000 ? '1 kg' : `${esc(p.jar_size_g)} g`],
+        p.registration_number && ['Beekeeper reg.', esc(p.registration_number)],
+        p.contact && ['Contact', esc(p.contact)],
+      ].filter(Boolean);
+      show(`<h1>${esc(p.name)}</h1><p class="muted code">${esc(code)}</p><div class="card"><dl>${rows2.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl></div>`);
+    }).catch(() => show('<h1>Could not load</h1><p>Check your connection and scan again.</p>'));
+  }
+</script>
+</body>
+</html>

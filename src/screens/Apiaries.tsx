@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { LuQrCode, LuCrosshair, LuMapPin, LuPencil, LuPlus, LuTrash2, LuThermometer, LuShieldCheck } from 'react-icons/lu';
+import { LuTruck, LuQrCode, LuCrosshair, LuMapPin, LuPencil, LuPlus, LuTrash2, LuThermometer, LuShieldCheck } from 'react-icons/lu';
 import * as db from '../db';
 import type { Apiary, Hive, Profile, Weather } from '../db';
 import { PROVINCES, fetchWeather, getPosition, inspectionWeatherVerdict, roundCoord, scoreTone, statusInfo } from '../lib';
@@ -78,6 +78,7 @@ export function ApiaryDetail({ id }: { id: string }) {
         <h3 className="h2">Hives</h3>
         <div className="row" style={{ gap: 8 }}>
           {data.hives.length > 0 && <a className="btn small ghost" href={`#/labels?apiary=${id}`} aria-label="Print labels for this apiary"><LuQrCode /> Labels</a>}
+          {data.hives.length > 0 && <a className="btn small ghost" href={`#/move/new?from=${id}`} aria-label="Plan a move from this apiary"><LuTruck /> Move</a>}
           <a className="btn small secondary" href={`#/hive/new?apiary=${id}`}><LuPlus /> Add hive</a>
         </div>
       </div>

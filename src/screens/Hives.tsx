@@ -8,6 +8,7 @@ import {
 import { Empty, Field, Hex, ListLink, Pills, Seg, Sheet, Topbar, back, go, toast } from '../ui';
 import { PhotoAdder, PhotoGrid } from './Photos';
 import { AutopsyFields, WeightCard, lossLabel } from './Field';
+import { HarvestButton } from './Honey';
 import type { Weight } from '../db';
 import { colonyView, STAGE_LABEL, type ColonyView } from '../engine';
 import { LuLightbulb, LuTrendingUp, LuTrendingDown } from 'react-icons/lu';
@@ -102,7 +103,10 @@ export function HiveDetail({ id }: { id: string }) {
         <button className="btn secondary" onClick={() => setPhotoSheet(true)}><LuCamera /> Photo</button>
       </div>
 
-      <a className="btn ghost" href={`#/labels?hive=${id}`} style={{ marginTop: 10 }}><LuQrCode /> Print QR label</a>
+      <div className="grid-2" style={{ marginTop: 10 }}>
+        <HarvestButton hive={hive} apiary={apiary} />
+        <a className="btn ghost" href={`#/labels?hive=${id}`}><LuQrCode /> QR label</a>
+      </div>
 
       {(hive.status === 'dead' || hive.status === 'absconded') && (
         <div className="banner warn" style={{ marginTop: 12 }}>

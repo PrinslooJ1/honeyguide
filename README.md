@@ -78,6 +78,27 @@
 - **Colony autopsy**: when a hive is marked dead or absconded, record the likely cause from the national loss-survey list, plus theft, fire and drought.
 - **Weight and lift log**: weekly kg from a scale, or a light/medium/heavy lift test. The trend reads gaining (flow) or losing (dearth or robbing). Migration 004.
 
+## Release 1.2: moves and contracts
+
+- **Migration planner** (`src/screens/Moves.tsx`):
+  - plan a move between apiaries, choosing the hives, date, distance and costs
+  - checks before the move: Cape bees heading into African-bee country, unknown bee types leaving the Cape or hybrid zone, suspected AFB (do not move), recent small hive beetle, and missing landowner permission
+  - a night-move checklist, one tap into Night mode, and cost per hive
+  - "Hives are moved" updates every hive's apiary; completed moves form the movement record
+- **Pollination contracts** (`src/screens/Contracts.tsx`):
+  - grower, farm, contact, crop, hives, fee per hive, in and out dates, placement apiary and spray agreement
+  - status steps: draft › agreed › placed › completed › invoiced › paid
+  - a printable invoice (INV-YYYY-NNN) with your invoice details from Profile
+
+## Release 1.3: honey, callouts and incidents
+
+- **Harvest log**: kg, frames, main forage (from the apiary's tagged plants) and moisture. It warns above 20% water, the Codex limit.
+- **Jar batches** (`src/screens/Honey.tsx`): group harvests and pick a jar size to estimate jar count. Passport stickers print on any label stock, with a QR code to the batch's passport.
+- **Public honey passport** (`public/passport.html` with the `get_passport(code)` function from migration 005): batch name, forage, province, harvest month and size. It shows the registration number or a contact only if the owner chooses, and is opt-in per batch. It never shows a location.
+- **Bee-removal job book** (`src/screens/Jobs.tsx`): client, phone, area, before and after photos, outcome and fee, with an invoice. "Relocated to my apiary" turns the colony into a new hive.
+- **Theft and incident pack** (`src/screens/Incidents.tsx`): log what happened, which hives, photos and the SAPS case number. The printable report pack lists your registration number, the hive codes on the boxes, last-inspection dates and photos. The apiary GPS is included only if you choose.
+- **Business hub**: paid this year, still owed, and links to all of the above. Business records are owner-only, even in shared apiaries (migration 005).
+
 ## Run it
 
 ```bash
@@ -90,7 +111,7 @@ Build-time overrides: `SUPABASE_URL` and `SUPABASE_KEY` (publishable key). The d
 
 ## Database
 
-Apply `supabase/migrations/001_init.sql`, `002_apiary_groups.sql`, `003_forage.sql` and `004_field_records.sql` in order. 001 creates:
+Apply `supabase/migrations/001_init.sql` to `005_business.sql` in order. 001 creates:
 - the tables, with triggers that stamp `updated_at` on the server
 - the row-level security policies
 - the private `photos` bucket

@@ -6,10 +6,12 @@ import { PHOTO_TAGS, processPhoto } from '../lib';
 import { PhotoThumb, PhotoViewer, Pills, toast } from '../ui';
 
 /** Camera and gallery buttons. Photos are shrunk and cleaned of location data before saving. */
-export function PhotoAdder({ hiveId, inspectionId, onAdded }: { hiveId: string; inspectionId?: string; onAdded?: (p: Photo) => void }) {
+export function PhotoAdder({ hiveId, inspectionId, jobId, incidentId, tags = PHOTO_TAGS, onAdded }: {
+  hiveId?: string; inspectionId?: string; jobId?: string; incidentId?: string; tags?: string[]; onAdded?: (p: Photo) => void;
+}) {
   const camRef = useRef<HTMLInputElement>(null);
   const galRef = useRef<HTMLInputElement>(null);
-  const [tag, setTag] = useState('General');
+  const [tag, setTag] = useState(tags[0]);
   const [busy, setBusy] = useState(false);
 
   const handle = async (files: FileList | null) => {
@@ -21,7 +23,8 @@ export function PhotoAdder({ hiveId, inspectionId, onAdded }: { hiveId: string; 
         const id = db.uuid();
         await db.putBlob(id, blob);
         const p = await db.save<Photo>('photos', {
-          id, hive_id: hiveId, inspection_id: inspectionId || null, tag, width, height, taken_at: new Date().toISOString(), storage_path: null,
+          id, hive_id: hiveId || null, inspection_id: inspectionId || null, job_id: jobId || null, incident_id: incidentId || null,
+          tag, width, height, taken_at: new Date().toISOString(), storage_path: null,
         });
         onAdded?.(p);
       }
@@ -38,7 +41,7 @@ export function PhotoAdder({ hiveId, inspectionId, onAdded }: { hiveId: string; 
 
   return (
     <div className="stack">
-      <Pills label="Photo tag" single options={PHOTO_TAGS.map((t) => ({ value: t, label: t }))} value={[tag]} onChange={(v) => setTag(v[0] || 'General')} />
+      <Pills label="Photo tag" single options={tags.map((t) => ({ value: t, label: t }))} value={[tag]} onChange={(v) => setTag(v[0] || tags[0])} />
       <div className="grid-2">
         <button className="btn secondary" disabled={busy} onClick={() => camRef.current?.click()}><LuCamera /> {busy ? 'Saving…' : 'Camera'}</button>
         <button className="btn secondary" disabled={busy} onClick={() => galRef.current?.click()}><LuImage /> Gallery</button>

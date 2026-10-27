@@ -15,17 +15,23 @@ export const cloudConfigured = Boolean(SUPABASE_URL && SUPABASE_KEY);
 
 // Columns the server accepts, per table. Local-only fields (_dirty, _rev) never leave the phone.
 const COLUMNS: Record<Table, string[]> = {
-  profiles: ['id', 'display_name', 'province', 'registration_number', 'created_at', 'deleted'],
+  profiles: ['id', 'display_name', 'province', 'registration_number', 'invoice_details', 'public_contact', 'created_at', 'deleted'],
   apiaries: ['id', 'name', 'province', 'lat', 'lng', 'location_precision', 'landowner', 'permission_notes', 'forage_notes', 'access_notes', 'forage_plants', 'created_at', 'deleted'],
   hives: ['id', 'apiary_id', 'name', 'code', 'hive_type', 'subspecies', 'queen_year', 'queen_marked', 'status', 'notes', 'loss_cause', 'lost_at', 'created_at', 'deleted'],
   inspections: ['id', 'hive_id', 'inspected_at', 'temperament', 'queen_status', 'brood_frames', 'brood_pattern', 'honey_frames', 'pollen_frames', 'space', 'pests', 'afb_suspect', 'actions', 'notes', 'score', 'weather', 'created_at', 'deleted'],
-  photos: ['id', 'hive_id', 'inspection_id', 'tag', 'storage_path', 'width', 'height', 'taken_at', 'created_at', 'deleted'],
+  photos: ['id', 'hive_id', 'inspection_id', 'job_id', 'incident_id', 'tag', 'storage_path', 'width', 'height', 'taken_at', 'created_at', 'deleted'],
   blooms: ['id', 'plant_id', 'apiary_id', 'province', 'seen_at', 'note', 'created_at', 'deleted'],
   traps: ['id', 'name', 'apiary_id', 'location_note', 'lat', 'lng', 'lure', 'placed_at', 'check_every_days', 'last_checked_at', 'status', 'caught_at', 'hive_id', 'notes', 'created_at', 'deleted'],
   weights: ['id', 'hive_id', 'weighed_at', 'kg', 'lift', 'notes', 'created_at', 'deleted'],
+  moves: ['id', 'from_apiary_id', 'to_apiary_id', 'hive_ids', 'planned_for', 'status', 'moved_at', 'distance_km', 'cost_per_km', 'other_costs', 'checklist', 'notes', 'created_at', 'deleted'],
+  contracts: ['id', 'grower', 'farm', 'contact', 'crop', 'hives', 'fee_per_hive', 'starts_on', 'ends_on', 'apiary_id', 'spray_agreed', 'spray_notes', 'status', 'invoice_no', 'invoiced_at', 'paid_at', 'notes', 'created_at', 'deleted'],
+  batches: ['id', 'code', 'name', 'forage', 'province', 'harvest_month', 'jars', 'jar_size_g', 'public', 'show_reg', 'show_contact', 'notes', 'created_at', 'deleted'],
+  harvests: ['id', 'hive_id', 'harvested_at', 'kg', 'frames', 'forage', 'moisture', 'batch_id', 'notes', 'created_at', 'deleted'],
+  jobs: ['id', 'client_name', 'client_phone', 'area', 'requested_at', 'done_at', 'outcome', 'fee', 'paid', 'invoice_no', 'hive_id', 'notes', 'created_at', 'deleted'],
+  incidents: ['id', 'kind', 'occurred_at', 'apiary_id', 'hive_ids', 'description', 'saps_case_no', 'reported_at', 'notes', 'created_at', 'deleted'],
 };
 // Parents before children, so foreign keys hold.
-const PUSH_ORDER: Table[] = ['profiles', 'apiaries', 'hives', 'inspections', 'photos', 'blooms', 'traps', 'weights'];
+const PUSH_ORDER: Table[] = ['profiles', 'apiaries', 'hives', 'inspections', 'jobs', 'incidents', 'photos', 'blooms', 'traps', 'weights', 'moves', 'contracts', 'batches', 'harvests'];
 
 // ---------------- auth ----------------
 let session: Session | null = null;
@@ -191,7 +197,11 @@ async function push() {
       const ready: Base[] = [];
       for (const p of rows as Photo[]) {
         // A photo taken mid-inspection waits until that inspection is saved.
-        if (p.inspection_id && !(await db.getRaw('inspections', p.inspection_id))) {
+        const parentMissing =
+          (p.inspection_id && !(await db.getRaw('inspections', p.inspection_id))) ||
+          (p.job_id && !(await db.getRaw('jobs', p.job_id))) ||
+          (p.incident_id && !(await db.getRaw('incidents', p.incident_id)));
+        if (parentMissing) {
           if (p.deleted) await db.putClean('photos', p); // draft was discarded: nothing to send
           continue;
         }

@@ -1,8 +1,10 @@
 // Tiny IndexedDB layer. Every record lives on the phone first; sync is a background extra.
 import { useEffect, useState } from 'react';
 
-export type Table = 'profiles' | 'apiaries' | 'hives' | 'inspections' | 'photos' | 'blooms' | 'traps' | 'weights';
-export const TABLES: Table[] = ['profiles', 'apiaries', 'hives', 'inspections', 'photos', 'blooms', 'traps', 'weights'];
+export type Table = 'profiles' | 'apiaries' | 'hives' | 'inspections' | 'photos' | 'blooms' | 'traps' | 'weights'
+  | 'moves' | 'contracts' | 'batches' | 'harvests' | 'jobs' | 'incidents';
+export const TABLES: Table[] = ['profiles', 'apiaries', 'hives', 'inspections', 'photos', 'blooms', 'traps', 'weights',
+  'moves', 'contracts', 'batches', 'harvests', 'jobs', 'incidents'];
 
 export interface Base {
   id: string;
@@ -17,6 +19,8 @@ export interface Profile extends Base {
   display_name?: string;
   province?: string;
   registration_number?: string;
+  invoice_details?: string; // shown on invoices: trading name, address, phone, payment details
+  public_contact?: string; // optional, shown on public honey passports
 }
 
 export interface Apiary extends Base {
@@ -97,6 +101,96 @@ export interface Weight extends Base {
   notes?: string;
 }
 
+/** A planned or completed move of hives between apiaries (also the movement record). */
+export interface Move extends Base {
+  from_apiary_id: string;
+  to_apiary_id: string;
+  hive_ids: string[];
+  planned_for: string; // yyyy-mm-dd
+  status: 'planned' | 'done' | 'cancelled';
+  moved_at?: string | null;
+  distance_km?: number | null;
+  cost_per_km?: number | null;
+  other_costs?: number | null;
+  checklist?: string[];
+  notes?: string;
+}
+
+export type ContractStatus = 'draft' | 'agreed' | 'placed' | 'completed' | 'invoiced' | 'paid';
+/** Pollination contract. Private to the owner. */
+export interface Contract extends Base {
+  grower: string;
+  farm?: string;
+  contact?: string;
+  crop: string;
+  hives: number;
+  fee_per_hive: number;
+  starts_on?: string | null;
+  ends_on?: string | null;
+  apiary_id?: string | null;
+  spray_agreed?: boolean;
+  spray_notes?: string;
+  status: ContractStatus;
+  invoice_no?: string | null;
+  invoiced_at?: string | null;
+  paid_at?: string | null;
+  notes?: string;
+}
+
+/** A jar batch. Public honey passport only when the owner switches it on; never GPS. */
+export interface Batch extends Base {
+  code: string; // HB-XXXX, printed as a QR on the jar label
+  name: string;
+  forage?: string;
+  province?: string;
+  harvest_month?: string | null; // yyyy-mm-01
+  jars?: number | null;
+  jar_size_g?: number | null;
+  public?: boolean;
+  show_reg?: boolean;
+  show_contact?: boolean;
+  notes?: string;
+}
+
+export interface Harvest extends Base {
+  hive_id: string;
+  harvested_at: string;
+  kg: number;
+  frames?: number | null;
+  forage?: string;
+  moisture?: number | null;
+  batch_id?: string | null;
+  notes?: string;
+}
+
+export type JobOutcome = 'removed_live' | 'relocated' | 'not_bees' | 'no_access' | 'referred' | 'other';
+/** Bee-removal callout. Client details are private to the owner. */
+export interface Job extends Base {
+  client_name: string;
+  client_phone?: string;
+  area?: string;
+  requested_at: string;
+  done_at?: string | null;
+  outcome?: JobOutcome | null;
+  fee?: number | null;
+  paid?: boolean;
+  invoice_no?: string | null;
+  hive_id?: string | null; // when a removed colony became one of your hives
+  notes?: string;
+}
+
+export type IncidentKind = 'theft' | 'vandalism' | 'fire' | 'flood' | 'honey_badger' | 'other';
+export interface Incident extends Base {
+  kind: IncidentKind;
+  occurred_at: string;
+  apiary_id?: string | null;
+  hive_ids?: string[];
+  description?: string;
+  saps_case_no?: string;
+  reported_at?: string | null;
+  notes?: string;
+}
+
 /** Bloom Watch: "in bloom here now". Holds the apiary (if any), never a fresh GPS point. */
 export interface Bloom extends Base {
   plant_id: string;
@@ -107,8 +201,10 @@ export interface Bloom extends Base {
 }
 
 export interface Photo extends Base {
-  hive_id?: string;
+  hive_id?: string | null;
   inspection_id?: string | null;
+  job_id?: string | null;
+  incident_id?: string | null;
   tag?: string;
   storage_path?: string | null;
   width?: number;
@@ -117,7 +213,7 @@ export interface Photo extends Base {
 }
 
 const DB_NAME = 'honeyguide';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 let dbPromise: Promise<IDBDatabase> | null = null;
 
 function open(): Promise<IDBDatabase> {
@@ -133,7 +229,7 @@ function open(): Promise<IDBDatabase> {
           if (t === 'hives') s.createIndex('apiary_id', 'apiary_id');
           if (t === 'inspections' || t === 'photos') s.createIndex('hive_id', 'hive_id');
           if (t === 'blooms') s.createIndex('plant_id', 'plant_id');
-          if (t === 'weights') s.createIndex('hive_id', 'hive_id');
+          if (t === 'weights' || t === 'harvests') s.createIndex('hive_id', 'hive_id');
         }
       }
       if (!db.objectStoreNames.contains('blobs')) db.createObjectStore('blobs');
