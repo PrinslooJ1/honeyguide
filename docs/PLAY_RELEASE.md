@@ -7,7 +7,7 @@ Play Console account: **Jaco Prinsloo** (personal). Package name: **`com.prinslo
 1. Import `PrinslooJ1/honeyguide` at vercel.com/new. The build settings are already in `vercel.json`. Note the address, for example `honeyguide.vercel.app`.
 2. In the Supabase SQL Editor, run `supabase/migrations/001_init.sql`, then `002_apiary_groups.sql`, then `003_forage.sql`, then `004_field_records.sql`.
 3. In Supabase › Authentication › URL Configuration, set **Site URL** to the Vercel address and add the same address under **Redirect URLs**.
-4. In `public/privacy.html` and `public/delete-account.html`, replace `[contact email to be added before launch]` with the public contact email.
+4. The public contact email is jacoprinsloo.me@gmail.com (already in the privacy and deletion pages).
 
 ## 2. Build the Android App Bundle
 

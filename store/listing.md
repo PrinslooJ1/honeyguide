@@ -8,7 +8,7 @@ Copy the text into Play Console › Grow › Store presence › Main store listi
 - **Short description** (max 80): `The offline hive log for South African beekeepers. Free, private, no ads.` (73)
 - **Category:** Productivity
 - **Tags:** Agriculture, Nature, Productivity (pick the closest ones Play offers)
-- **Contact email:** to be decided by the publisher (shown publicly)
+- **Contact email:** jacoprinsloo.me@gmail.com (shown publicly)
 - **Privacy policy URL:** `https://<vercel-host>/privacy.html`
 
 ## Full description (max 4,000)

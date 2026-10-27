@@ -90,7 +90,7 @@ Build-time overrides: `SUPABASE_URL` and `SUPABASE_KEY` (publishable key). The d
 
 ## Database
 
-Apply `supabase/migrations/001_init.sql`, `002_apiary_groups.sql` and `003_forage.sql` in order. 001 creates:
+Apply `supabase/migrations/001_init.sql`, `002_apiary_groups.sql`, `003_forage.sql` and `004_field_records.sql` in order. 001 creates:
 - the tables, with triggers that stamp `updated_at` on the server
 - the row-level security policies
 - the private `photos` bucket
