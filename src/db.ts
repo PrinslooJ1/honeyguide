@@ -2,12 +2,13 @@
 import { useEffect, useState } from 'react';
 
 export type Table = 'profiles' | 'apiaries' | 'hives' | 'inspections' | 'photos' | 'blooms' | 'traps' | 'weights'
-  | 'moves' | 'contracts' | 'batches' | 'harvests' | 'jobs' | 'incidents';
+  | 'moves' | 'contracts' | 'batches' | 'harvests' | 'jobs' | 'incidents' | 'comments' | 'agreements' | 'site_events' | 'equipment';
 export const TABLES: Table[] = ['profiles', 'apiaries', 'hives', 'inspections', 'photos', 'blooms', 'traps', 'weights',
-  'moves', 'contracts', 'batches', 'harvests', 'jobs', 'incidents'];
+  'moves', 'contracts', 'batches', 'harvests', 'jobs', 'incidents', 'comments', 'agreements', 'site_events', 'equipment'];
 
 export interface Base {
   id: string;
+  owner_id?: string; // set by the server; absent on records not yet synced (those are always yours)
   created_at?: string;
   updated_at?: string;
   deleted?: boolean;
@@ -200,6 +201,58 @@ export interface Bloom extends Base {
   note?: string;
 }
 
+/** A note from a mentor, partner or yourself on a hive, optionally about one inspection. */
+export interface HiveComment extends Base {
+  hive_id: string;
+  inspection_id?: string | null;
+  author_name?: string;
+  body: string;
+}
+
+export type AgreementKind = 'verbal' | 'written' | 'lease' | 'pollination' | 'other';
+/** Landowner permission for an apiary site. Private to the owner. */
+export interface Agreement extends Base {
+  apiary_id?: string | null;
+  landowner: string;
+  phone?: string;
+  email?: string;
+  kind: AgreementKind;
+  starts_on?: string | null; // yyyy-mm-dd
+  expires_on?: string | null;
+  remind_days: number;
+  terms?: string;
+  notes?: string;
+  status: 'active' | 'ended';
+}
+
+export type SiteEventKind = 'complaint' | 'visit' | 'payment' | 'renewal' | 'note';
+/** Something that happened at a site: a neighbour's complaint, a visit, a payment in honey. */
+export interface SiteEvent extends Base {
+  agreement_id?: string | null;
+  apiary_id?: string | null;
+  happened_at: string;
+  kind: SiteEventKind;
+  person?: string;
+  body?: string;
+  resolved?: boolean;
+}
+
+export type EquipmentKind = 'brood_box' | 'super' | 'frames' | 'floor' | 'lid' | 'excluder' | 'feeder' | 'nuc_box' | 'smoker' | 'hive_tool' | 'suit' | 'extractor' | 'other';
+export interface CleaningEntry { at: string; method: string; note?: string }
+/** Boxes, frames and tools, with cleaning dates. Kit from a dead-out waits in quarantine until cleaned. */
+export interface Equipment extends Base {
+  name: string;
+  kind: EquipmentKind;
+  qty: number;
+  status: 'in_use' | 'stored' | 'quarantine' | 'retired';
+  hive_id?: string | null;
+  source_hive_id?: string | null;
+  last_cleaned_at?: string | null;
+  clean_method?: string | null;
+  history?: CleaningEntry[];
+  notes?: string;
+}
+
 export interface Photo extends Base {
   hive_id?: string | null;
   inspection_id?: string | null;
@@ -213,7 +266,7 @@ export interface Photo extends Base {
 }
 
 const DB_NAME = 'honeyguide';
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 let dbPromise: Promise<IDBDatabase> | null = null;
 
 function open(): Promise<IDBDatabase> {
@@ -229,7 +282,8 @@ function open(): Promise<IDBDatabase> {
           if (t === 'hives') s.createIndex('apiary_id', 'apiary_id');
           if (t === 'inspections' || t === 'photos') s.createIndex('hive_id', 'hive_id');
           if (t === 'blooms') s.createIndex('plant_id', 'plant_id');
-          if (t === 'weights' || t === 'harvests') s.createIndex('hive_id', 'hive_id');
+          if (t === 'weights' || t === 'harvests' || t === 'comments') s.createIndex('hive_id', 'hive_id');
+          if (t === 'site_events') s.createIndex('agreement_id', 'agreement_id');
         }
       }
       if (!db.objectStoreNames.contains('blobs')) db.createObjectStore('blobs');
@@ -326,6 +380,16 @@ export async function remove(table: Table, id: string) {
   await save(table, { ...prev, deleted: true });
 }
 
+/** Remove a record from this phone only (lost access, or a record the server refused). Nothing is synced. */
+export async function purge(table: Table, id: string) {
+  await wrap((await store(table, 'readwrite')).delete(id));
+}
+
+/** Write a record exactly as given, flags included. */
+export async function putRaw(table: Table, rec: Base) {
+  await wrap((await store(table, 'readwrite')).put(rec));
+}
+
 /** Write a record that came from the server (no dirty flag). */
 export async function putClean(table: Table, rec: Base) {
   const s = await store(table, 'readwrite');
@@ -340,9 +404,10 @@ export async function dirty(table: Table): Promise<Base[]> {
   return (await wrap((await store(table)).index('_dirty').getAll(1))) as Base[];
 }
 
+/** Changes waiting to go, not counting ones the server turned away (those wait for the user). */
 export async function pendingCount(): Promise<number> {
   let n = 0;
-  for (const t of TABLES) n += await wrap((await store(t)).index('_dirty').count(1));
+  for (const t of TABLES) n += (await dirty(t)).filter((r) => !(r as { _refused?: string })._refused).length;
   return n;
 }
 

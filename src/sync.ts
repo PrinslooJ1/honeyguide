@@ -1,8 +1,9 @@
 // Supabase over plain fetch: email sign-in, row sync, private photo storage.
 // The app works fully without an account; signing in adds backup and multi-device.
 import * as db from './db';
-import type { Base, Photo, Table } from './db';
+import type { Apiary, Base, Photo, Table } from './db';
 import { SUPABASE_KEY, SUPABASE_URL } from './config';
+import { purgeLostAccess, purgeOthers, refreshShare } from './share';
 
 export interface Session {
   access_token: string;
@@ -29,9 +30,14 @@ const COLUMNS: Record<Table, string[]> = {
   harvests: ['id', 'hive_id', 'harvested_at', 'kg', 'frames', 'forage', 'moisture', 'batch_id', 'notes', 'created_at', 'deleted'],
   jobs: ['id', 'client_name', 'client_phone', 'area', 'requested_at', 'done_at', 'outcome', 'fee', 'paid', 'invoice_no', 'hive_id', 'notes', 'created_at', 'deleted'],
   incidents: ['id', 'kind', 'occurred_at', 'apiary_id', 'hive_ids', 'description', 'saps_case_no', 'reported_at', 'notes', 'created_at', 'deleted'],
+  comments: ['id', 'hive_id', 'inspection_id', 'author_name', 'body', 'created_at', 'deleted'],
+  agreements: ['id', 'apiary_id', 'landowner', 'phone', 'email', 'kind', 'starts_on', 'expires_on', 'remind_days', 'terms', 'notes', 'status', 'created_at', 'deleted'],
+  site_events: ['id', 'agreement_id', 'apiary_id', 'happened_at', 'kind', 'person', 'body', 'resolved', 'created_at', 'deleted'],
+  equipment: ['id', 'name', 'kind', 'qty', 'status', 'hive_id', 'source_hive_id', 'last_cleaned_at', 'clean_method', 'history', 'notes', 'created_at', 'deleted'],
 };
 // Parents before children, so foreign keys hold.
-const PUSH_ORDER: Table[] = ['profiles', 'apiaries', 'hives', 'inspections', 'jobs', 'incidents', 'photos', 'blooms', 'traps', 'weights', 'moves', 'contracts', 'batches', 'harvests'];
+const PUSH_ORDER: Table[] = ['profiles', 'apiaries', 'hives', 'inspections', 'comments', 'jobs', 'incidents', 'photos', 'blooms', 'traps', 'weights',
+  'moves', 'contracts', 'batches', 'harvests', 'agreements', 'site_events', 'equipment'];
 
 // ---------------- auth ----------------
 let session: Session | null = null;
@@ -118,6 +124,7 @@ export async function sendMagicLink(email: string) {
 }
 
 export async function signOut() {
+  await purgeOthers(session?.user.id).catch(console.error);
   if (session) {
     fetch(`${SUPABASE_URL}/auth/v1/logout`, {
       method: 'POST',
@@ -141,14 +148,19 @@ async function token(): Promise<string> {
   return session!.access_token;
 }
 
-async function api(path: string, init: RequestInit = {}) {
+export async function api(path: string, init: RequestInit = {}) {
   const res = await fetch(`${SUPABASE_URL}${path}`, {
     ...init,
     headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${await token()}`, ...(init.headers || {}) },
   });
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`${res.status} ${text.slice(0, 200)}`);
+    let body: { code?: string; message?: string } = {};
+    try { body = JSON.parse(text); } catch { /* not JSON */ }
+    // The message keeps the status and code (sync matches on them); userMessage is for people.
+    throw Object.assign(new Error(`${res.status} ${body.code || ''} ${body.message || text.slice(0, 200)}`), {
+      status: res.status, code: body.code, userMessage: body.message || `Request failed (${res.status})`,
+    });
   }
   return res;
 }
@@ -174,7 +186,50 @@ function pick(table: Table, rec: Base) {
   const out: Record<string, unknown> = {};
   for (const c of COLUMNS[table]) out[c] = (rec as any)[c] ?? null;
   if (out.deleted === null) out.deleted = false;
+  // The apiary row is what group members see: it carries the point rounded to about 1 km.
+  // An exact pin goes to apiary_locations, which only the owner (and members they allow) can read.
+  if (table === 'apiaries' && typeof out.lat === 'number' && typeof out.lng === 'number') {
+    out.lat = round2(out.lat as number);
+    out.lng = round2(out.lng as number);
+  }
   return out;
+}
+const round2 = (v: number) => Math.round(v * 100) / 100;
+
+// The server refused a row (row-level security or an owner-only rule): retrying will not help.
+const refused = (e: unknown) => /42501|row-level security|P0001|owner_id cannot be changed|Only the owner/.test(String((e as Error)?.message));
+// The table is not on the server yet (the app is newer than the database): skip it for now.
+const missingTable = (e: unknown) => /42P01|PGRST20[0-9]|Could not find the table|does not exist/.test(String((e as Error)?.message));
+
+async function upsert(table: Table, rows: Base[]): Promise<Base[]> {
+  const res = await api(`/rest/v1/${table}?on_conflict=id`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=representation' },
+    body: JSON.stringify(rows.map((r) => pick(table, r))),
+  });
+  return res.json();
+}
+
+const mine = (r: Base) => !r.owner_id || r.owner_id === session?.user.id;
+
+/** Exact pins for apiaries this user owns. */
+async function pushLocations(sent: Apiary[]) {
+  for (const a of sent) {
+    if (!mine(a)) continue;
+    const exact = !a.deleted && a.location_precision === 'precise' && a.lat != null && a.lng != null;
+    const local = (await db.getRaw('apiaries', a.id)) as (Apiary & { _loc?: number }) | undefined;
+    if (exact) {
+      await api('/rest/v1/apiary_locations?on_conflict=apiary_id', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' },
+        body: JSON.stringify({ apiary_id: a.id, lat: a.lat, lng: a.lng }),
+      });
+      if (local && !local._loc) await db.putRaw('apiaries', { ...local, _loc: 1 } as Base);
+    } else if (local?._loc) {
+      await api(`/rest/v1/apiary_locations?apiary_id=eq.${a.id}`, { method: 'DELETE' });
+      await db.putRaw('apiaries', { ...local, _loc: 0 } as Base);
+    }
+  }
 }
 
 async function uploadPhoto(p: Photo): Promise<Photo | null> {
@@ -191,7 +246,8 @@ async function uploadPhoto(p: Photo): Promise<Photo | null> {
 
 async function push() {
   for (const table of PUSH_ORDER) {
-    let rows = await db.dirty(table);
+    // Rows the server turned away wait until the user retries or discards them.
+    let rows = (await db.dirty(table)).filter((r) => !(r as { _refused?: string })._refused);
     if (!rows.length) continue;
     if (table === 'photos') {
       const ready: Base[] = [];
@@ -215,50 +271,111 @@ async function push() {
     }
     for (let i = 0; i < rows.length; i += 200) {
       const batch = rows.slice(i, i + 200);
-      const res = await api(`/rest/v1/${table}?on_conflict=id`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=representation' },
-        body: JSON.stringify(batch.map((r) => pick(table, r))),
-      });
-      const saved: Base[] = await res.json();
+      let saved: Base[] = [];
+      const turnedAway: { row: Base; reason: string }[] = [];
+      try {
+        saved = await upsert(table, batch);
+      } catch (e) {
+        if (missingTable(e)) break; // keep the rows; they go once the database is updated
+        if (!refused(e)) throw e;
+        // One bad row should not hold back the rest: send them one at a time.
+        for (const r of batch) {
+          try {
+            saved.push(...(await upsert(table, [r])));
+          } catch (e2) {
+            if (!refused(e2)) throw e2;
+            turnedAway.push({ row: r, reason: refusalText(e2) });
+          }
+        }
+      }
       for (const srv of saved) {
         const sent = batch.find((b) => b.id === srv.id)!;
         const local = await db.getRaw(table, srv.id);
         // Only mark clean if nobody edited the record while it was in flight.
         if (local && local._rev === sent._rev) {
-          await db.putClean(table, { ...local, ...srv, _rev: local._rev });
+          const merged: any = { ...local, ...srv, _rev: local._rev };
+          if (table === 'apiaries') { merged.lat = (local as Apiary).lat; merged.lng = (local as Apiary).lng; } // keep the exact pin on the phone
+          await db.putClean(table, merged);
         }
       }
+      if (table === 'apiaries') await pushLocations(batch.filter((b) => saved.some((s) => s.id === b.id)) as Apiary[]);
+      // Never drop the user's work: keep refused rows on the phone, flagged, for them to decide.
+      for (const t of turnedAway) {
+        const local = await db.getRaw(table, t.row.id);
+        if (local) await db.putRaw(table, { ...local, _refused: t.reason } as Base);
+      }
+      if (turnedAway.length) db.notify();
     }
   }
+}
+
+function refusalText(e: unknown) {
+  const m = String((e as Error)?.message);
+  if (/Only the owner/.test(m)) return 'Only the owner can delete this record.';
+  if (/owner_id/.test(m)) return 'Records cannot be handed to someone else.';
+  return 'Your role does not allow this change, or your access has ended.';
 }
 
 async function pull() {
   for (const table of PUSH_ORDER) {
     let cursor = (await db.getMeta<string>(`cursor:${table}`)) || '1970-01-01T00:00:00Z';
-    for (;;) {
-      const res = await api(`/rest/v1/${table}?select=*&updated_at=gt.${encodeURIComponent(cursor)}&order=updated_at.asc&limit=500`);
-      const rows: Base[] = await res.json();
-      for (const srv of rows) {
-        const local = await db.getRaw(table, srv.id);
-        if (local?._dirty) continue; // local edit wins; it will be pushed next
-        await db.putClean(table, { ...srv, _rev: local?._rev || 0 });
+    try {
+      for (;;) {
+        const res = await api(`/rest/v1/${table}?select=*&updated_at=gt.${encodeURIComponent(cursor)}&order=updated_at.asc&limit=500`);
+        const rows: Base[] = await res.json();
+        for (const srv of rows) {
+          const local = await db.getRaw(table, srv.id);
+          if (local?._dirty) continue; // local edit wins; it will be pushed next
+          const next: any = { ...srv, _rev: local?._rev || 0 };
+          if (table === 'apiaries') {
+            const l = local as (Apiary & { _loc?: number }) | undefined;
+            const a = srv as Apiary;
+            // The server row holds the rounded point; keep this phone's exact pin if it still matches.
+            if (l && l.location_precision === 'precise' && l.lat != null && l.lng != null && a.lat === round2(l.lat) && a.lng === round2(l.lng)) {
+              next.lat = l.lat; next.lng = l.lng; next.location_precision = 'precise';
+            } else if (a.location_precision === 'precise' && !mine(a)) {
+              next.location_precision = 'approximate'; // until an exact pin arrives from apiary_locations
+            }
+            next._loc = l?._loc;
+          }
+          await db.putClean(table, next);
+        }
+        if (rows.length) {
+          cursor = rows[rows.length - 1].updated_at!;
+          await db.setMeta(`cursor:${table}`, cursor);
+        }
+        if (rows.length < 500) break;
       }
-      if (rows.length) {
-        cursor = rows[rows.length - 1].updated_at!;
-        await db.setMeta(`cursor:${table}`, cursor);
-      }
-      if (rows.length < 500) break;
+    } catch (e) {
+      if (!missingTable(e)) throw e;
     }
   }
+  await pullLocations();
 }
 
-export async function syncNow() {
+/** Exact pins: the owner's own (from another phone), or a partner's when the owner allowed it. */
+async function pullLocations() {
+  const cursor = (await db.getMeta<string>('cursor:apiary_locations')) || '1970-01-01T00:00:00Z';
+  const res = await api(`/rest/v1/apiary_locations?select=*&updated_at=gt.${encodeURIComponent(cursor)}&order=updated_at.asc`);
+  const rows: { apiary_id: string; lat: number; lng: number; updated_at: string }[] = await res.json();
+  for (const r of rows) {
+    const local = (await db.getRaw('apiaries', r.apiary_id)) as Apiary | undefined;
+    if (!local || local._dirty) continue;
+    await db.putClean('apiaries', { ...local, lat: r.lat, lng: r.lng, location_precision: 'precise', _loc: mine(local) ? 1 : 0 } as Base);
+  }
+  if (rows.length) await db.setMeta('cursor:apiary_locations', rows[rows.length - 1].updated_at);
+}
+
+/** fresh: also reload group membership now (a person pressed Sync), instead of at most once a minute. */
+export async function syncNow(opts: { fresh?: boolean } = {}) {
   if (!cloudConfigured || !session || state.running || !navigator.onLine) return;
   await emitSync({ running: true, error: undefined });
   try {
+    // Group membership first: it decides what this phone may hold and whether to pull from scratch.
+    const share = await refreshShare(opts.fresh ? 0 : 60_000).catch((e) => (console.warn('Sharing not refreshed', e), null));
     await push();
     await pull();
+    if (share) await purgeLostAccess(share);
     await emitSync({ running: false, lastAt: new Date().toISOString() });
     db.notify();
   } catch (e: any) {

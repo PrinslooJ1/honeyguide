@@ -6,4 +6,4 @@ const envKey = import.meta.env.SUPABASE_KEY as string;
 
 export const SUPABASE_URL = envUrl || 'https://qtpawlgptjeebcqftxvx.supabase.co';
 export const SUPABASE_KEY = envKey || 'sb_publishable_D6Lo3IYwL4u5XehXhsHyBQ_qq30zTnx';
-export const APP_VERSION = '0.1.0';
+export const APP_VERSION = '0.9.0';

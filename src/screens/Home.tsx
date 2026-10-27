@@ -8,6 +8,10 @@ import { trapDue } from './Field';
 import type { Trap } from '../db';
 import { LuTrophy, LuFlower2, LuGraduationCap, LuBox } from 'react-icons/lu';
 import { plantsForProvince, plantMonths } from '../content/forage';
+import { LuHouse, LuPackage, LuUsers } from 'react-icons/lu';
+import type { Equipment, HiveComment } from '../db';
+import { agreementsDue, expiryText } from './Landowners';
+import { myId, useShare } from '../share';
 
 export interface HiveSummary {
   hive: Hive;
@@ -126,6 +130,9 @@ export function Home() {
       <div className="card"><div className="eyebrow">{season.season} focus</div><p style={{ margin: '6px 0 0' }}>{season.tip}</p></div>
       <HomeForage province={profile?.province} />
       <TrapsDue />
+      <LandownersDue />
+      <Quarantine />
+      <SharedNews />
       <RankCard />
 
       <div className="row between"><h3 className="h2">Safety</h3><a className="small" href="#/safety">Safety centre</a></div>
@@ -185,6 +192,48 @@ function TrapsDue() {
     <a className="card row" href="#/traps" style={{ marginTop: 12, textDecoration: 'none' }}>
       <LuBox style={{ width: 28, height: 28, color: 'var(--primary-strong)', flex: 'none' }} />
       <div className="grow"><b>Swarm traps</b><div className="small muted">{[due && `${due} due a check`, occupied && `${occupied} with bees to move`].filter(Boolean).join(' · ')}</div></div>
+    </a>
+  );
+}
+
+function LandownersDue() {
+  const due = db.useLive(agreementsDue);
+  if (!due?.length) return null;
+  const first = [...due].sort((a, b) => (a.expires_on || '').localeCompare(b.expires_on || ''))[0];
+  return (
+    <a className="card row" href={due.length === 1 ? `#/agreement/${first.id}` : '#/landowners'} style={{ marginTop: 12, textDecoration: 'none' }}>
+      <LuHouse style={{ width: 28, height: 28, color: 'var(--warn)', flex: 'none' }} />
+      <div className="grow"><b>Landowner permission</b><div className="small muted">{due.length === 1 ? `${first.landowner}: ${expiryText(first).toLowerCase()}` : `${due.length} sites need renewing`}</div></div>
+    </a>
+  );
+}
+
+function Quarantine() {
+  const n = db.useLive(async () => (await db.all<Equipment>('equipment')).filter((e) => e.status === 'quarantine').length);
+  if (!n) return null;
+  return (
+    <a className="card row" href="#/equipment" style={{ marginTop: 12, textDecoration: 'none' }}>
+      <LuPackage style={{ width: 28, height: 28, color: 'var(--primary-strong)', flex: 'none' }} />
+      <div className="grow"><b>Equipment in quarantine</b><div className="small muted">{n} item{n > 1 ? 's' : ''} to clean before reuse</div></div>
+    </a>
+  );
+}
+
+/** New comments from a mentor or partner in the last week. */
+function SharedNews() {
+  const share = useShare();
+  const news = db.useLive(async () => {
+    const me = myId();
+    if (!me) return [];
+    const since = Date.now() - 7 * 86400000;
+    return (await db.all<HiveComment>('comments')).filter((c) => c.owner_id && c.owner_id !== me && new Date(c.created_at || 0).getTime() > since);
+  }, [share?.at]);
+  if (!news?.length) return null;
+  const last = news.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''))[0];
+  return (
+    <a className="card row" href={`#/hive/${last.hive_id}`} style={{ marginTop: 12, textDecoration: 'none' }}>
+      <LuUsers style={{ width: 28, height: 28, color: 'var(--primary-strong)', flex: 'none' }} />
+      <div className="grow"><b>{news.length === 1 ? 'New comment' : `${news.length} new comments`}</b><div className="small muted">{last.author_name || 'A member'}: {last.body.slice(0, 80)}{last.body.length > 80 ? '…' : ''}</div></div>
     </a>
   );
 }

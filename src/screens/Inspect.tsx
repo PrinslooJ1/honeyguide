@@ -10,11 +10,14 @@ import { getSettings } from '../settings';
 import { Empty, Field, Hex, ListLink, Pills, Ring, Seg, Stepper, SyncChip, Topbar, back, go, toast } from '../ui';
 import { loadSummaries } from './Home';
 import { PhotoAdder, PhotoGrid } from './Photos';
+import { access, hiveRole, myId, useShare, getShare } from '../share';
+import { Comments } from './Share';
 
 export function InspectPicker() {
   const data = db.useLive(loadSummaries);
+  const share = useShare();
   if (!data) return null;
-  const live = data.hives.filter((h) => !['dead', 'absconded'].includes(h.hive.status || 'active'));
+  const live = data.hives.filter((h) => !['dead', 'absconded'].includes(h.hive.status || 'active') && access(hiveRole(h.hive, h.apiary, share)).canInspect);
   return (
     <>
       <Topbar title="Inspect a hive" right={<SyncChip />} />
@@ -62,7 +65,8 @@ export function InspectFlow({ hiveId }: { hiveId: string }) {
     const apiary = hive ? await db.get<Apiary>('apiaries', hive.apiary_id) : undefined;
     const prev = (await db.byIndex<Inspection>('inspections', 'hive_id', hiveId)).sort((a, b) => b.inspected_at.localeCompare(a.inspected_at))[0];
     const photos = (await db.byIndex<Photo>('photos', 'hive_id', hiveId)).filter((p) => p.inspection_id === d.id);
-    return { hive, apiary, prev, photos };
+    const acc = access(hiveRole(hive, apiary, await getShare()));
+    return { hive, apiary, prev, photos, acc };
   }, [hiveId, d.id]);
 
   // Keep a draft so a phone call or a sting does not lose the inspection.
@@ -79,6 +83,7 @@ export function InspectFlow({ hiveId }: { hiveId: string }) {
   const score = useMemo(() => healthScore(d), [d]);
   if (!ctx) return null;
   if (!ctx.hive) return (<><Topbar title="Inspect" backTo="/inspect" /><Empty title="Hive not found" text="It may have been deleted." /></>);
+  if (!ctx.acc.canInspect) return (<><Topbar title={ctx.hive.name} backTo={`/hive/${hiveId}`} /><Empty title="View only" text="You can see this hive's records and comment, but your role does not include logging inspections." action={<a className="btn" href={`#/hive/${hiveId}`}>Back to the hive</a>} /></>);
   const set = (patch: Partial<Inspection>) => setD((x) => ({ ...x, ...patch }));
   const verdict = inspectionWeatherVerdict(d.weather);
 
@@ -99,7 +104,8 @@ export function InspectFlow({ hiveId }: { hiveId: string }) {
     let status = hive.status;
     if (qs.includes('queenless') || qs.includes('laying_workers')) status = 'queenless';
     else if ((qs.includes('eggs') || qs.includes('queen_seen')) && hive.status === 'queenless') status = 'active';
-    if (status !== hive.status) await db.save<Hive>('hives', { ...hive, status });
+    // Helpers log inspections but may not edit the hive itself; the owner sees the queen signs.
+    if (status !== hive.status && ctx.acc.canEdit) await db.save<Hive>('hives', { ...hive, status });
     try { localStorage.removeItem(draftKey); } catch { /* ignore */ }
     navigator.vibrate?.([20, 40, 20]);
     toast(navigator.onLine ? 'Inspection saved' : 'Saved on this phone. It will sync when you have signal.');
@@ -255,7 +261,11 @@ export function InspectionView({ id }: { id: string }) {
     if (!i) return { i };
     const hive = await db.get<Hive>('hives', i.hive_id);
     const photos = (await db.byIndex<Photo>('photos', 'hive_id', i.hive_id)).filter((p) => p.inspection_id === id);
-    return { i, hive, photos };
+    const apiary = hive ? await db.get<Apiary>('apiaries', hive.apiary_id) : undefined;
+    const share = await getShare();
+    const acc = access(hiveRole(hive, apiary, share));
+    const shared = !!share && (!acc.isOwner || share.apiaries.some((x) => x.apiary_id === hive?.apiary_id) || share.hives.some((x) => x.hive_id === hive?.id));
+    return { i, hive, photos, acc, shared };
   }, [id]);
   if (!data) return null;
   const { i, hive, photos = [] } = data;
@@ -288,7 +298,8 @@ export function InspectionView({ id }: { id: string }) {
         </dl>
       </div>
       {photos.length > 0 && (<><h3 className="h2">Photos</h3><PhotoGrid photos={photos} /></>)}
-      <button className="btn ghost" onClick={del} style={{ color: 'var(--bad)', marginTop: 18 }}><LuTrash2 /> Delete inspection</button>
+      {data.shared && <Comments hiveId={i.hive_id} inspectionId={i.id} canComment={!!data.acc?.canComment} />}
+      {(!i.owner_id || i.owner_id === myId()) && <button className="btn ghost" onClick={del} style={{ color: 'var(--bad)', marginTop: 18 }}><LuTrash2 /> Delete inspection</button>}
     </>
   );
 }

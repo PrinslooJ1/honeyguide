@@ -25,6 +25,11 @@ import { ContractDetail, ContractForm, ContractInvoice, ContractList } from './s
 import { BatchDetail, BatchForm, HarvestList } from './screens/Honey';
 import { JobDetail, JobForm, JobInvoice, JobList } from './screens/Jobs';
 import { IncidentDetail, IncidentForm, IncidentList, IncidentReport } from './screens/Incidents';
+import { GroupDetail, JoinScreen, SharingHub } from './screens/Share';
+import { AgreementDetail, AgreementForm, LandownerList, migrateLandowners } from './screens/Landowners';
+import { EquipmentDetail, EquipmentForm, EquipmentList } from './screens/Equipment';
+import { LossSurvey } from './screens/Survey';
+import { SeasonReplay } from './screens/Replay';
 
 applyTheme();
 
@@ -102,6 +107,19 @@ function App() {
   else if (seg[0] === 'incident' && seg[2] === 'edit') screen = <IncidentForm id={seg[1]} />;
   else if (seg[0] === 'incident' && seg[2] === 'report') screen = <IncidentReport id={seg[1]} />;
   else if (seg[0] === 'incident' && seg[1]) screen = <IncidentDetail id={seg[1]} />;
+  else if (path === '/sharing') screen = <SharingHub />;
+  else if (seg[0] === 'group' && seg[1]) screen = <GroupDetail id={seg[1]} />;
+  else if (seg[0] === 'join') screen = <JoinScreen code={seg[1] ? decodeURIComponent(seg[1]) : undefined} />;
+  else if (path === '/landowners') screen = <LandownerList />;
+  else if (path === '/agreement/new') screen = <AgreementForm apiaryId={query.get('apiary') || undefined} />;
+  else if (seg[0] === 'agreement' && seg[2] === 'edit') screen = <AgreementForm id={seg[1]} />;
+  else if (seg[0] === 'agreement' && seg[1]) screen = <AgreementDetail id={seg[1]} />;
+  else if (path === '/equipment') screen = <EquipmentList />;
+  else if (path === '/equipment/new') screen = <EquipmentForm fromHive={query.get('from') || undefined} />;
+  else if (seg[0] === 'equipment' && seg[2] === 'edit') screen = <EquipmentForm id={seg[1]} />;
+  else if (seg[0] === 'equipment' && seg[1]) screen = <EquipmentDetail id={seg[1]} />;
+  else if (path === '/survey') screen = <LossSurvey />;
+  else if (path === '/replay') screen = <SeasonReplay />;
   else if (path === '/forage') screen = <ForageLibrary />;
   else if (seg[0] === 'plant' && seg[1]) screen = <PlantDetail id={seg[1]} />;
   else if (path === '/safety') screen = <Safety />;
@@ -126,6 +144,7 @@ function App() {
 
 async function boot() {
   await initAuth();
+  await migrateLandowners().catch(console.error);
   startAutoSync();
   createRoot(document.getElementById('root')!).render(
     <StrictMode>

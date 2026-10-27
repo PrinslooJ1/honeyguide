@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react';
-import { LuBriefcase, LuBox, LuSiren, LuFlower2, LuGraduationCap, LuHistory, LuQrCode, LuScanQrCode, LuCloud, LuDownload, LuLock, LuLogOut, LuRefreshCw, LuShieldCheck, LuTrash2, LuUser, LuPhone, LuMail } from 'react-icons/lu';
+import { LuBriefcase, LuBox, LuSiren, LuFlower2, LuGraduationCap, LuHistory, LuQrCode, LuScanQrCode, LuCloud, LuDownload, LuLock, LuLogOut, LuRefreshCw, LuShieldCheck, LuTrash2, LuUser, LuPhone, LuMail, LuUsers, LuHouse, LuPackage, LuSparkles, LuClipboardList } from 'react-icons/lu';
 import * as db from '../db';
 import type { Profile } from '../db';
 import { APP_VERSION } from '../config';
 import { PROVINCES, fmtDateTime, hashPin } from '../lib';
 import { setSettings, useSettings, type Theme } from '../settings';
 import { cloudConfigured, currentSession, deleteAccount, sendMagicLink, signIn, signOut, signUp, syncNow } from '../sync';
-import { Field, Seg, Sheet, Topbar, toast, useSync } from '../ui';
+import { Field, ListLink, Seg, Sheet, Topbar, toast, useSync } from '../ui';
+import { useShare } from '../share';
 import { PinPad } from './Lock';
 
-function Account() {
+export function Account() {
   const session = currentSession();
   const sync = useSync();
   const [email, setEmail] = useState('');
@@ -31,7 +32,7 @@ function Account() {
         <div className="row"><LuUser /><div className="grow"><b>{session.user.email}</b><div className="small muted">{sync.lastAt ? `Last synced ${fmtDateTime(sync.lastAt)}` : 'Not synced yet'}{sync.pending ? ` · ${sync.pending} change${sync.pending > 1 ? 's' : ''} waiting` : ''}</div></div></div>
         {sync.error && <p className="small tone-bad" style={{ margin: 0 }}>Last sync failed: {sync.error}</p>}
         <div className="grid-2">
-          <button className="btn secondary" disabled={sync.running} onClick={() => syncNow()}><LuRefreshCw /> {sync.running ? 'Syncing…' : 'Sync now'}</button>
+          <button className="btn secondary" disabled={sync.running} onClick={() => syncNow({ fresh: true })}><LuRefreshCw /> {sync.running ? 'Syncing…' : 'Sync now'}</button>
           <button className="btn ghost" onClick={() => run(async () => { await signOut(); toast('Signed out. Your records stay on this phone.'); })}><LuLogOut /> Sign out</button>
         </div>
       </div>
@@ -117,6 +118,8 @@ function LockSetup() {
 export function More() {
   const s = useSettings();
   const session = currentSession();
+  const share = useShare();
+  const groups = share?.groups.length || 0;
 
   const exportData = async () => {
     const data = await db.exportAll();
@@ -153,6 +156,9 @@ export function More() {
 
       <h3 className="h2"><LuCloud style={{ verticalAlign: -3 }} /> Account and backup</h3>
       <Account />
+      <div className="list" style={{ marginTop: 12 }}>
+        <ListLink href="/sharing" left={<LuUsers />} title="Sharing" sub={groups ? `${groups} group${groups > 1 ? 's' : ''} · partners, cover and mentors` : 'Share apiaries with a partner, cover or a mentor'} />
+      </div>
 
       <h3 className="h2">Display</h3>
       <div className="stack">
@@ -179,7 +185,7 @@ export function More() {
         </div>
         <div className="field"><span>App lock</span><LockSetup /></div>
       </div>
-      <p className="small muted">Photos are shrunk and cleaned of their GPS tag before they are saved. Your records are visible only to you; sharing with a partner beekeeper comes in the next update.</p>
+      <p className="small muted">Photos are shrunk and cleaned of their GPS tag before they are saved. Your records are visible only to you and the people you share an apiary or hive with, limited by their role.</p>
 
       <h3 className="h2">Profile</h3>
       <ProfileCard />
@@ -202,6 +208,10 @@ export function More() {
         <a className="btn secondary" href="#/log"><LuHistory /> Inspection log</a>
         <a className="btn secondary" href="#/traps"><LuBox /> Swarm traps</a>
         <a className="btn secondary" href="#/business"><LuBriefcase /> Business</a>
+        <a className="btn secondary" href="#/landowners"><LuHouse /> Landowners</a>
+        <a className="btn secondary" href="#/equipment"><LuPackage /> Equipment</a>
+        <a className="btn secondary" href="#/replay"><LuSparkles /> Season replay</a>
+        <a className="btn secondary" href="#/survey"><LuClipboardList /> Loss survey</a>
       </div>
 
       <h3 className="h2">Hive labels</h3>
@@ -217,7 +227,7 @@ export function More() {
         {session && <button className="btn ghost" style={{ color: 'var(--bad)' }} onClick={delAccount}><LuTrash2 /> Delete my account and cloud data</button>}
       </div>
 
-      <p className="small muted" style={{ marginTop: 24, textAlign: 'center' }}>Honeyguide {APP_VERSION} · Phase 1 prototype<br />Guidance in this app is general information, not veterinary or legal advice.<br /><a href="privacy.html" target="_blank" rel="noreferrer">Privacy policy</a> · <a href="delete-account.html" target="_blank" rel="noreferrer">Delete account on the web</a></p>
+      <p className="small muted" style={{ marginTop: 24, textAlign: 'center' }}>Honeyguide {APP_VERSION} · beta<br />Guidance in this app is general information, not veterinary or legal advice.<br /><a href="privacy.html" target="_blank" rel="noreferrer">Privacy policy</a> · <a href="delete-account.html" target="_blank" rel="noreferrer">Delete account on the web</a></p>
     </>
   );
 }

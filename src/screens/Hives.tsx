@@ -11,7 +11,9 @@ import { AutopsyFields, WeightCard, lossLabel } from './Field';
 import { HarvestButton } from './Honey';
 import type { Weight } from '../db';
 import { colonyView, STAGE_LABEL, type ColonyView } from '../engine';
-import { LuLightbulb, LuTrendingUp, LuTrendingDown } from 'react-icons/lu';
+import { LuLightbulb, LuTrendingUp, LuTrendingDown, LuPackage } from 'react-icons/lu';
+import { access, apiaryRole, hiveRole, myId, useShare } from '../share';
+import { Comments, MentorButton, ShareNote } from './Share';
 
 function Sparkline({ values }: { values: number[] }) {
   if (values.length < 2) return null;
@@ -69,10 +71,13 @@ export function HiveDetail({ id }: { id: string }) {
     return { hive, apiary, inspections, photos, weights };
   }, [id]);
   const [photoSheet, setPhotoSheet] = useState(false);
+  const share = useShare();
 
   if (!data) return null;
   const { hive, apiary, inspections = [], photos = [], weights = [] } = data;
-  if (!hive) return (<><Topbar title="Hive" backTo="/apiaries" /><Empty title="Hive not found" text="It may have been deleted." /></>);
+  if (!hive) return (<><Topbar title="Hive" backTo="/apiaries" /><Empty title="Hive not found" text="It may have been deleted, or it is no longer shared with you." /></>);
+  const acc = access(hiveRole(hive, apiary, share));
+  const shared = !acc.isOwner || !!share?.apiaries.some((x) => x.apiary_id === hive.apiary_id) || !!share?.hives.some((x) => x.hive_id === hive.id);
   const last = inspections[0];
   const qc = queenColour(hive.queen_year);
   const view = colonyView(hive, apiary, inspections);
@@ -80,12 +85,12 @@ export function HiveDetail({ id }: { id: string }) {
 
   return (
     <>
-      <Topbar title={hive.name} backTo={`/apiary/${hive.apiary_id}`} right={<a className="icon-btn" href={`#/hive/${id}/edit`} aria-label="Edit hive"><LuPencil /></a>} />
+      <Topbar title={hive.name} backTo={apiary ? `/apiary/${hive.apiary_id}` : '/sharing'} right={acc.canEdit ? <a className="icon-btn" href={`#/hive/${id}/edit`} aria-label="Edit hive"><LuPencil /></a> : undefined} />
       <div className="card row">
         <Hex size={84} label={last?.score ?? '–'} tone={last?.afb_suspect ? 'bad' : last ? scoreTone(last.score) : st.tone} />
         <div className="grow">
           <span className={`badge ${st.tone}`}>{st.label}</span>
-          <div style={{ marginTop: 6, fontWeight: 650 }}>{apiary?.name}</div>
+          <div style={{ marginTop: 6, fontWeight: 650 }}>{apiary?.name || 'Shared hive'}</div>
           <div className="small muted">{agoLabel(last?.inspected_at)}</div>
           <div className="small muted">{hive.code}</div>
         </div>
@@ -98,26 +103,32 @@ export function HiveDetail({ id }: { id: string }) {
         </div>
       )}
 
-      <div className="grid-2" style={{ marginTop: 12 }}>
-        <a className="btn" href={`#/inspect/${id}`}><LuHexagon /> Inspect</a>
-        <button className="btn secondary" onClick={() => setPhotoSheet(true)}><LuCamera /> Photo</button>
-      </div>
-
-      <div className="grid-2" style={{ marginTop: 10 }}>
-        <HarvestButton hive={hive} apiary={apiary} />
-        <a className="btn ghost" href={`#/labels?hive=${id}`}><LuQrCode /> QR label</a>
-      </div>
+      <ShareNote apiary={apiary} hive={hive} share={share} />
+      {acc.canInspect && (
+        <div className="grid-2" style={{ marginTop: 12 }}>
+          <a className="btn" href={`#/inspect/${id}`}><LuHexagon /> Inspect</a>
+          <button className="btn secondary" onClick={() => setPhotoSheet(true)}><LuCamera /> Photo</button>
+        </div>
+      )}
+      {acc.canInspect && (
+        <div className="grid-2" style={{ marginTop: 10 }}>
+          <HarvestButton hive={hive} apiary={apiary} />
+          {acc.canEdit ? <a className="btn ghost" href={`#/labels?hive=${id}`}><LuQrCode /> QR label</a> : <span />}
+        </div>
+      )}
+      {acc.isOwner && <div style={{ marginTop: 10 }}><MentorButton hive={hive} /></div>}
 
       {(hive.status === 'dead' || hive.status === 'absconded') && (
         <div className="banner warn" style={{ marginTop: 12 }}>
           <LuTriangleAlert />
           <div><b>{hive.status === 'dead' ? 'Colony lost' : 'Colony absconded'}{hive.lost_at ? ` · ${fmtDate(hive.lost_at)}` : ''}</b>
-            <p>Likely cause: {lossLabel(hive.loss_cause)}. {hive.loss_cause ? '' : 'Edit the hive to record what you think happened.'}</p></div>
+            <p>Likely cause: {lossLabel(hive.loss_cause)}. {hive.loss_cause ? '' : 'Edit the hive to record what you think happened.'}</p>
+            {acc.isOwner && <a className="btn small secondary" style={{ marginTop: 8 }} href={`#/equipment/new?from=${hive.id}`}><LuPackage /> Log the empty boxes</a>}</div>
         </div>
       )}
 
       <ColonyCard view={view} />
-      <WeightCard hiveId={id} weights={weights} />
+      <WeightCard hiveId={id} weights={weights} canLog={acc.canInspect} />
 
       <h3 className="h2">About this hive</h3>
       <div className="card">
@@ -132,6 +143,8 @@ export function HiveDetail({ id }: { id: string }) {
 
       <h3 className="h2">Photos</h3>
       {photos.length ? <PhotoGrid photos={photos} /> : <p className="muted">No photos yet. Brood frames photographed over time are the best record of a colony's health.</p>}
+
+      {shared && <Comments hiveId={id} canComment={acc.canComment} />}
 
       <h3 className="h2">Inspections</h3>
       {inspections.length === 0 ? (
@@ -154,7 +167,9 @@ export function HiveDetail({ id }: { id: string }) {
 }
 
 export function HiveForm({ id, apiaryId }: { id?: string; apiaryId?: string }) {
-  const apiaries = db.useLive(() => db.all<Apiary>('apiaries'));
+  const share = useShare();
+  const allApiaries = db.useLive(() => db.all<Apiary>('apiaries'));
+  const apiaries = allApiaries?.filter((a) => access(apiaryRole(a, share)).canEdit);
   const [h, setH] = useState<Partial<Hive> | null>(id ? null : { apiary_id: apiaryId, status: 'active', hive_type: 'Langstroth', queen_marked: false });
   useEffect(() => {
     if (id) db.get<Hive>('hives', id).then((r) => setH(r || {}));
@@ -229,7 +244,7 @@ export function HiveForm({ id, apiaryId }: { id?: string; apiaryId?: string }) {
         </div>
         <Field label="Notes" hint="optional"><textarea className="input" value={h.notes || ''} onChange={(e) => set({ notes: e.target.value })} placeholder="Origin, swarm date, temperament history" /></Field>
         <button className="btn" onClick={submit}>Save hive</button>
-        {id && <button className="btn ghost" onClick={del} style={{ color: 'var(--bad)' }}><LuTrash2 /> Delete hive</button>}
+        {id && (access(apiaryRole(apiary, share)).isOwner || !h.owner_id || h.owner_id === myId()) && <button className="btn ghost" onClick={del} style={{ color: 'var(--bad)' }}><LuTrash2 /> Delete hive</button>}
       </div>
     </>
   );

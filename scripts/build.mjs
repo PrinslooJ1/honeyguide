@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 
 const serve = process.argv.includes('--serve');
-const out = 'dist';
+const out = process.env.OUT_DIR || 'dist';
 rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });
 cpSync('public', out, { recursive: true });

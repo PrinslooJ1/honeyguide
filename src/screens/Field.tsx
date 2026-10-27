@@ -50,7 +50,7 @@ export function weightTrend(list: Weight[]) {
   return { perWeek, kind, series: kg.slice(-10).map((w) => Number(w.kg)) };
 }
 
-export function WeightCard({ hiveId, weights }: { hiveId: string; weights: Weight[] }) {
+export function WeightCard({ hiveId, weights, canLog = true }: { hiveId: string; weights: Weight[]; canLog?: boolean }) {
   const [open, setOpen] = useState(false);
   const [method, setMethod] = useState<'scale' | 'lift'>(() => (weights.some((w) => w.kg != null) ? 'scale' : 'lift'));
   const lastKg = [...weights].reverse().find((w) => w.kg != null)?.kg;
@@ -69,9 +69,10 @@ export function WeightCard({ hiveId, weights }: { hiveId: string; weights: Weigh
   };
 
   const max = trend ? Math.max(...trend.series) : 0, min = trend ? Math.min(...trend.series) : 0;
+  if (!canLog && !sorted.length) return null; // nothing to show someone who cannot log weights
   return (
     <>
-      <div className="row between"><h3 className="h2">Weight</h3><button className="btn small secondary" onClick={() => setOpen(true)}><LuScale /> Log weight</button></div>
+      <div className="row between"><h3 className="h2">Weight</h3>{canLog && <button className="btn small secondary" onClick={() => setOpen(true)}><LuScale /> Log weight</button>}</div>
       {sorted.length === 0 ? (
         <p className="muted" style={{ marginTop: 0 }}>Weigh or lift the back of the hive weekly without opening it. Rising weight means a flow; falling weight means a dearth or robbing.</p>
       ) : (

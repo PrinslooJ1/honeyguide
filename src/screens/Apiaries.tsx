@@ -8,9 +8,13 @@ import { Empty, Field, Hex, ListLink, SyncChip, Topbar, back, go, toast } from '
 import { BEE_ZONE_LABEL, RAINFALL_LABEL, suggestRegion, zonesForProvince, beeZone as beeZoneAt, rainfallZone, type RegionGuess } from '../region';
 import { ApiaryForage, ForagePicker } from './Forage';
 import { loadSummaries } from './Home';
+import { access, apiaryRole, nameFor, useShare } from '../share';
+import { ShareNote } from './Share';
+import { ApiaryLandowner } from './Landowners';
 
 export function ApiaryList() {
   const data = db.useLive(loadSummaries);
+  const share = useShare();
   return (
     <>
       <Topbar title="Apiaries" right={<SyncChip />} />
@@ -28,7 +32,7 @@ export function ApiaryList() {
                 <ListLink key={a.id} href={`/apiary/${a.id}`}
                   left={<Hex size={44} label={<span style={{ fontSize: 15 }}>{hs.length}</span>} tone={flagged ? 'warn' : 'good'} />}
                   title={a.name}
-                  sub={`${a.province || 'Province not set'} · ${hs.length} hive${hs.length === 1 ? '' : 's'}${flagged ? ` · ${flagged} need attention` : ''}`} />
+                  sub={`${apiaryRole(a, share) === 'owner' ? a.province || 'Province not set' : `Shared by ${nameFor(a.owner_id, share)}`} · ${hs.length} hive${hs.length === 1 ? '' : 's'}${flagged ? ` · ${flagged} need attention` : ''}`} />
               );
             })}
           </div>
@@ -45,6 +49,7 @@ export function ApiaryDetail({ id }: { id: string }) {
     return { apiary: all.apiaries.find((a) => a.id === id), hives: all.hives.filter((h) => h.hive.apiary_id === id) };
   }, [id]);
   const [weather, setWeather] = useState<Weather | null>();
+  const share = useShare();
   const apiary = data?.apiary;
   useEffect(() => {
     if (apiary?.lat != null && apiary.lng != null && navigator.onLine && getSettings().weather) {
@@ -53,12 +58,13 @@ export function ApiaryDetail({ id }: { id: string }) {
   }, [apiary?.lat, apiary?.lng]);
 
   if (!data) return null;
-  if (!apiary) return (<><Topbar title="Apiary" backTo="/apiaries" /><Empty title="Apiary not found" text="It may have been deleted." /></>);
+  if (!apiary) return (<><Topbar title="Apiary" backTo="/apiaries" /><Empty title="Apiary not found" text="It may have been deleted, or it is no longer shared with you." /></>);
   const verdict = inspectionWeatherVerdict(weather);
+  const acc = access(apiaryRole(apiary, share));
 
   return (
     <>
-      <Topbar title={apiary.name} backTo="/apiaries" right={<a className="icon-btn" href={`#/apiary/${id}/edit`} aria-label="Edit apiary"><LuPencil /></a>} />
+      <Topbar title={apiary.name} backTo="/apiaries" right={acc.canEdit ? <a className="icon-btn" href={`#/apiary/${id}/edit`} aria-label="Edit apiary"><LuPencil /></a> : undefined} />
       <p className="muted" style={{ marginTop: 0 }}>
         {apiary.province || 'Province not set'} ·{' '}
         {apiary.location_precision === 'precise' ? 'Exact location saved' : apiary.location_precision === 'approximate' ? 'Approximate location (about 1 km)' : 'No location saved'}
@@ -77,14 +83,14 @@ export function ApiaryDetail({ id }: { id: string }) {
       <div className="row between">
         <h3 className="h2">Hives</h3>
         <div className="row" style={{ gap: 8 }}>
-          {data.hives.length > 0 && <a className="btn small ghost" href={`#/labels?apiary=${id}`} aria-label="Print labels for this apiary"><LuQrCode /> Labels</a>}
-          {data.hives.length > 0 && <a className="btn small ghost" href={`#/move/new?from=${id}`} aria-label="Plan a move from this apiary"><LuTruck /> Move</a>}
-          <a className="btn small secondary" href={`#/hive/new?apiary=${id}`}><LuPlus /> Add hive</a>
+          {data.hives.length > 0 && acc.canEdit && <a className="btn small ghost" href={`#/labels?apiary=${id}`} aria-label="Print labels for this apiary"><LuQrCode /> Labels</a>}
+          {data.hives.length > 0 && acc.isOwner && <a className="btn small ghost" href={`#/move/new?from=${id}`} aria-label="Plan a move from this apiary"><LuTruck /> Move</a>}
+          {acc.canEdit && <a className="btn small secondary" href={`#/hive/new?apiary=${id}`}><LuPlus /> Add hive</a>}
         </div>
       </div>
       {data.hives.length === 0 ? (
-        <Empty title="No hives here yet" text="Add each hive box at this site. You can give it a name like 'Hive 1' or 'Aloe row 3'."
-          action={<a className="btn" href={`#/hive/new?apiary=${id}`}><LuPlus /> Add first hive</a>} />
+        <Empty title="No hives here yet" text={acc.canEdit ? "Add each hive box at this site. You can give it a name like 'Hive 1' or 'Aloe row 3'." : 'The owner has not added hives here yet.'}
+          action={acc.canEdit ? <a className="btn" href={`#/hive/new?apiary=${id}`}><LuPlus /> Add first hive</a> : undefined} />
       ) : (
         <div className="hex-grid">
           {data.hives.sort((a, b) => a.hive.name.localeCompare(b.hive.name, undefined, { numeric: true })).map(({ hive, last, reasons }) => (
@@ -103,20 +109,21 @@ export function ApiaryDetail({ id }: { id: string }) {
         return `${RAINFALL_LABEL[z.rainfall]} · ${BEE_ZONE_LABEL[z.beeZone]} (suggested)`;
       })()}</p>
 
-      {(apiary.landowner || apiary.permission_notes || apiary.forage_notes || apiary.access_notes) && (
+      {(apiary.forage_notes || apiary.access_notes) && (
         <>
           <h3 className="h2">Site notes</h3>
           <div className="card">
             <dl className="kv">
-              {apiary.landowner && (<><dt>Landowner</dt><dd>{apiary.landowner}</dd></>)}
-              {apiary.permission_notes && (<><dt>Permission</dt><dd>{apiary.permission_notes}</dd></>)}
               {apiary.forage_notes && (<><dt>Forage</dt><dd>{apiary.forage_notes}</dd></>)}
               {apiary.access_notes && (<><dt>Access</dt><dd>{apiary.access_notes}</dd></>)}
             </dl>
           </div>
         </>
       )}
-      <p className="small muted row" style={{ marginTop: 16 }}><LuShieldCheck /> Private: only you can see this apiary and its location.</p>
+      {acc.isOwner && <ApiaryLandowner apiary={apiary} />}
+      <div style={{ marginTop: 16 }}>
+        {share && (share.apiaries.some((x) => x.apiary_id === id) || !acc.isOwner) ? <ShareNote apiary={apiary} share={share} /> : <p className="small muted row"><LuShieldCheck /> Private: only you can see this apiary and its location.</p>}
+      </div>
     </>
   );
 }
@@ -125,6 +132,7 @@ export function ApiaryForm({ id }: { id?: string }) {
   const [a, setA] = useState<Partial<Apiary> | null>(id ? null : { location_precision: 'off' });
   const [locating, setLocating] = useState(false);
   const [guess, setGuess] = useState<RegionGuess | null>(null);
+  const share = useShare();
   useEffect(() => {
     if (id) db.get<Apiary>('apiaries', id).then((r) => setA(r || {}));
     else db.all<Profile>('profiles').then((p) => setA((x) => ({ ...x, province: x?.province || p[0]?.province })));
@@ -164,6 +172,7 @@ export function ApiaryForm({ id }: { id?: string }) {
   };
 
   const mode = getSettings().locationMode;
+  const isOwner = !id || apiaryRole(a as Apiary, share) === 'owner';
   return (
     <>
       <Topbar title={id ? 'Edit apiary' : 'New apiary'} backTo="/apiaries" />
@@ -181,7 +190,9 @@ export function ApiaryForm({ id }: { id?: string }) {
             <span className="small muted">{a.location_precision === 'off' || !a.location_precision ? 'Not saved' : a.location_precision === 'precise' ? 'Exact' : 'About 1 km'}</span>
           </div>
           <p className="small muted" style={{ marginTop: 0 }}>Used once, when you tap a button, for weather and later for forage. Never tracked in the background. Only you can see it.</p>
-          {mode === 'off' ? (
+          {!isOwner ? (
+            <p className="small">Only the owner can change the location.</p>
+          ) : mode === 'off' ? (
             <p className="small">Location is switched off in More › Privacy.</p>
           ) : (
             <div className="grid-2">
@@ -209,12 +220,11 @@ export function ApiaryForm({ id }: { id?: string }) {
           <ForagePicker province={a.province} value={a.forage_plants || []} onChange={(v) => set({ forage_plants: v })} />
         </div>
 
-        <Field label="Landowner" hint="optional"><input className="input" value={a.landowner || ''} onChange={(e) => set({ landowner: e.target.value })} /></Field>
-        <Field label="Permission notes" hint="optional"><input className="input" value={a.permission_notes || ''} onChange={(e) => set({ permission_notes: e.target.value })} placeholder="e.g. Verbal OK, renew each spring" /></Field>
         <Field label="Forage nearby" hint="optional"><input className="input" value={a.forage_notes || ''} onChange={(e) => set({ forage_notes: e.target.value })} placeholder="e.g. Spotted aloe, citrus, gums" /></Field>
-        <Field label="Access and security" hint="optional"><textarea className="input" value={a.access_notes || ''} onChange={(e) => set({ access_notes: e.target.value })} placeholder="Gate code, dogs, track condition" /></Field>
+        <Field label="Access and security" hint="optional; seen by anyone you share this apiary with"><textarea className="input" value={a.access_notes || ''} onChange={(e) => set({ access_notes: e.target.value })} placeholder="Gate code, dogs, track condition" /></Field>
+        {isOwner && <p className="small muted" style={{ margin: 0 }}>The landowner, their phone number and your permission now live in the private landowner log, on the apiary page.</p>}
         <button className="btn" onClick={submit}>Save apiary</button>
-        {id && <button className="btn ghost" onClick={del} style={{ color: 'var(--bad)' }}><LuTrash2 /> Delete apiary</button>}
+        {id && isOwner && <button className="btn ghost" onClick={del} style={{ color: 'var(--bad)' }}><LuTrash2 /> Delete apiary</button>}
       </div>
     </>
   );

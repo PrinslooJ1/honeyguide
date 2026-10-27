@@ -4,6 +4,7 @@ import * as db from '../db';
 import type { Photo } from '../db';
 import { PHOTO_TAGS, processPhoto } from '../lib';
 import { PhotoThumb, PhotoViewer, Pills, toast } from '../ui';
+import { myId } from '../share';
 
 /** Camera and gallery buttons. Photos are shrunk and cleaned of location data before saving. */
 export function PhotoAdder({ hiveId, inspectionId, jobId, incidentId, tags = PHOTO_TAGS, onAdded }: {
@@ -60,7 +61,7 @@ export function PhotoGrid({ photos }: { photos: Photo[] }) {
       <div className="photo-grid">
         {photos.map((p) => <PhotoThumb key={p.id} photo={p} onOpen={() => setOpen(p)} />)}
       </div>
-      <PhotoViewer photo={open} onClose={() => setOpen(null)} onDelete={async (p) => {
+      <PhotoViewer photo={open} onClose={() => setOpen(null)} onDelete={open && open.owner_id && open.owner_id !== myId() ? undefined : async (p) => {
         if (!window.confirm('Delete this photo?')) return;
         await db.remove('photos', p.id);
         setOpen(null);

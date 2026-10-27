@@ -3,6 +3,7 @@ import { LuFlashlight, LuScanLine, LuTriangleAlert } from 'react-icons/lu';
 import * as db from '../db';
 import type { Hive } from '../db';
 import { Empty, Field, Topbar, go, toast } from '../ui';
+import { parseJoinCode } from '../share';
 
 /** Pull a hive code out of whatever a label holds: a Honeyguide link or the bare code. */
 export function parseHiveCode(text: string): string | null {
@@ -32,6 +33,14 @@ export function Scan({ then }: { then?: string }) {
 
   const open = async (raw: string) => {
     if (handled.current) return;
+    // A group invite QR opens the join screen.
+    const join = raw.toUpperCase().includes('/JOIN/') ? parseJoinCode(raw) : null;
+    if (join) {
+      handled.current = true;
+      navigator.vibrate?.(30);
+      go(`/join/${join}`, true);
+      return;
+    }
     const code = parseHiveCode(raw);
     if (!code) return toast('That code is not a Honeyguide hive label');
     const hive = await findHiveByCode(code);
