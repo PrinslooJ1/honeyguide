@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import {
   LuChevronLeft, LuChevronRight, LuCloud, LuCloudOff, LuRefreshCw, LuMinus, LuPlus, LuHouse,
-  LuMapPin, LuHexagon, LuHistory, LuMenu, LuCheck, LuWifiOff,
+  LuMapPin, LuHexagon, LuGraduationCap, LuMenu, LuCheck, LuWifiOff,
 } from 'react-icons/lu';
 import * as db from './db';
 import type { Photo } from './db';
@@ -148,7 +148,7 @@ export function Nav({ path }: { path: string }) {
       <a href="#/inspect" aria-label="Start an inspection">
         <span className="fab"><LuHexagon /></span>
       </a>
-      {item('/log', 'Log', <LuHistory />)}
+      {item('/learn', 'Learn', <LuGraduationCap />, '/learn')}
       {item('/more', 'More', <LuMenu />)}
     </nav>
   );

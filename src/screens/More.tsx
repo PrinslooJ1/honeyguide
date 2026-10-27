@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { LuQrCode, LuScanQrCode, LuCloud, LuDownload, LuLock, LuLogOut, LuRefreshCw, LuShieldCheck, LuTrash2, LuUser, LuPhone, LuMail } from 'react-icons/lu';
+import { LuSiren, LuFlower2, LuGraduationCap, LuHistory, LuQrCode, LuScanQrCode, LuCloud, LuDownload, LuLock, LuLogOut, LuRefreshCw, LuShieldCheck, LuTrash2, LuUser, LuPhone, LuMail } from 'react-icons/lu';
 import * as db from '../db';
 import type { Profile } from '../db';
 import { APP_VERSION } from '../config';
@@ -190,6 +190,14 @@ export function More() {
           <a className="btn danger" href="tel:112"><LuPhone /> Mobile 112</a>
         </div>
         <p className="small muted" style={{ margin: 0 }}>Scrape the sting out with a fingernail or card. Move away from the hive first.</p>
+      </div>
+
+      <h3 className="h2">Tools</h3>
+      <div className="grid-2">
+        <a className="btn secondary" href="#/safety"><LuSiren /> Safety</a>
+        <a className="btn secondary" href="#/forage"><LuFlower2 /> Forage</a>
+        <a className="btn secondary" href="#/learn"><LuGraduationCap /> Academy</a>
+        <a className="btn secondary" href="#/log"><LuHistory /> Inspection log</a>
       </div>
 
       <h3 className="h2">Hive labels</h3>

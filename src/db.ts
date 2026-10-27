@@ -1,8 +1,8 @@
 // Tiny IndexedDB layer. Every record lives on the phone first; sync is a background extra.
 import { useEffect, useState } from 'react';
 
-export type Table = 'profiles' | 'apiaries' | 'hives' | 'inspections' | 'photos';
-export const TABLES: Table[] = ['profiles', 'apiaries', 'hives', 'inspections', 'photos'];
+export type Table = 'profiles' | 'apiaries' | 'hives' | 'inspections' | 'photos' | 'blooms';
+export const TABLES: Table[] = ['profiles', 'apiaries', 'hives', 'inspections', 'photos', 'blooms'];
 
 export interface Base {
   id: string;
@@ -29,6 +29,7 @@ export interface Apiary extends Base {
   permission_notes?: string;
   forage_notes?: string;
   access_notes?: string;
+  forage_plants?: string[]; // plant ids from the forage library seen near this apiary
 }
 
 export interface Hive extends Base {
@@ -68,6 +69,15 @@ export interface Inspection extends Base {
   weather?: Weather | null;
 }
 
+/** Bloom Watch: "in bloom here now". Holds the apiary (if any), never a fresh GPS point. */
+export interface Bloom extends Base {
+  plant_id: string;
+  apiary_id?: string | null;
+  province?: string;
+  seen_at: string;
+  note?: string;
+}
+
 export interface Photo extends Base {
   hive_id?: string;
   inspection_id?: string | null;
@@ -79,7 +89,7 @@ export interface Photo extends Base {
 }
 
 const DB_NAME = 'honeyguide';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 let dbPromise: Promise<IDBDatabase> | null = null;
 
 function open(): Promise<IDBDatabase> {
@@ -94,6 +104,7 @@ function open(): Promise<IDBDatabase> {
           s.createIndex('_dirty', '_dirty');
           if (t === 'hives') s.createIndex('apiary_id', 'apiary_id');
           if (t === 'inspections' || t === 'photos') s.createIndex('hive_id', 'hive_id');
+          if (t === 'blooms') s.createIndex('plant_id', 'plant_id');
         }
       }
       if (!db.objectStoreNames.contains('blobs')) db.createObjectStore('blobs');

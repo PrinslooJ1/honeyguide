@@ -5,6 +5,8 @@ import type { Apiary, Hive, Profile, Weather } from '../db';
 import { PROVINCES, fetchWeather, getPosition, inspectionWeatherVerdict, roundCoord, scoreTone, statusInfo } from '../lib';
 import { getSettings } from '../settings';
 import { Empty, Field, Hex, ListLink, SyncChip, Topbar, back, go, toast } from '../ui';
+import { BEE_ZONE_LABEL, RAINFALL_LABEL, suggestRegion, zonesForProvince, beeZone as beeZoneAt, rainfallZone, type RegionGuess } from '../region';
+import { ApiaryForage, ForagePicker } from './Forage';
 import { loadSummaries } from './Home';
 
 export function ApiaryList() {
@@ -94,6 +96,12 @@ export function ApiaryDetail({ id }: { id: string }) {
         </div>
       )}
 
+      <ApiaryForage apiary={apiary} />
+      <p className="small muted">{(() => {
+        const z = apiary.lat != null && apiary.lng != null ? { rainfall: rainfallZone(apiary.lat, apiary.lng), beeZone: beeZoneAt(apiary.lat, apiary.lng) } : zonesForProvince(apiary.province);
+        return `${RAINFALL_LABEL[z.rainfall]} · ${BEE_ZONE_LABEL[z.beeZone]} (suggested)`;
+      })()}</p>
+
       {(apiary.landowner || apiary.permission_notes || apiary.forage_notes || apiary.access_notes) && (
         <>
           <h3 className="h2">Site notes</h3>
@@ -115,6 +123,7 @@ export function ApiaryDetail({ id }: { id: string }) {
 export function ApiaryForm({ id }: { id?: string }) {
   const [a, setA] = useState<Partial<Apiary> | null>(id ? null : { location_precision: 'off' });
   const [locating, setLocating] = useState(false);
+  const [guess, setGuess] = useState<RegionGuess | null>(null);
   useEffect(() => {
     if (id) db.get<Apiary>('apiaries', id).then((r) => setA(r || {}));
     else db.all<Profile>('profiles').then((p) => setA((x) => ({ ...x, province: x?.province || p[0]?.province })));
@@ -127,6 +136,7 @@ export function ApiaryForm({ id }: { id?: string }) {
     try {
       const pos = await getPosition();
       set({ lat: roundCoord(pos.coords.latitude, precision), lng: roundCoord(pos.coords.longitude, precision), location_precision: precision });
+      setGuess(suggestRegion(pos.coords.latitude, pos.coords.longitude));
       toast(precision === 'precise' ? 'Exact location saved' : 'Approximate location saved');
     } catch (e: any) {
       toast(e?.code === 1 ? 'Location permission was declined. You can still save the apiary.' : 'Could not get a location fix. Try again in the open.');
@@ -179,6 +189,23 @@ export function ApiaryForm({ id }: { id?: string }) {
               {a.lat != null && <button className="btn ghost" onClick={() => set({ lat: null, lng: null, location_precision: 'off' })}>Clear</button>}
             </div>
           )}
+          {guess && (
+            <div className="banner info" style={{ marginTop: 12 }}>
+              <LuMapPin />
+              <div>
+                <b>Suggested region</b>
+                <p>{guess.province ? `${guess.province} (near ${guess.nearest})` : 'This looks outside South Africa'} · {RAINFALL_LABEL[guess.rainfall]} · {BEE_ZONE_LABEL[guess.beeZone]}</p>
+                <p className="small muted">Worked out on this phone. Boundaries blur, so change it if it's wrong.</p>
+                {guess.province && guess.province !== a.province && (
+                  <button className="btn small secondary" style={{ marginTop: 8 }} onClick={() => { set({ province: guess.province! }); setGuess(null); }}>Use {guess.province}</button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="field"><span>Forage near this apiary <span className="hint">· tap what grows within about 3 km</span></span>
+          <ForagePicker province={a.province} value={a.forage_plants || []} onChange={(v) => set({ forage_plants: v })} />
         </div>
 
         <Field label="Landowner" hint="optional"><input className="input" value={a.landowner || ''} onChange={(e) => set({ landowner: e.target.value })} /></Field>

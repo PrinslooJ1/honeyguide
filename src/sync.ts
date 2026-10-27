@@ -16,13 +16,14 @@ export const cloudConfigured = Boolean(SUPABASE_URL && SUPABASE_KEY);
 // Columns the server accepts, per table. Local-only fields (_dirty, _rev) never leave the phone.
 const COLUMNS: Record<Table, string[]> = {
   profiles: ['id', 'display_name', 'province', 'registration_number', 'created_at', 'deleted'],
-  apiaries: ['id', 'name', 'province', 'lat', 'lng', 'location_precision', 'landowner', 'permission_notes', 'forage_notes', 'access_notes', 'created_at', 'deleted'],
+  apiaries: ['id', 'name', 'province', 'lat', 'lng', 'location_precision', 'landowner', 'permission_notes', 'forage_notes', 'access_notes', 'forage_plants', 'created_at', 'deleted'],
   hives: ['id', 'apiary_id', 'name', 'code', 'hive_type', 'subspecies', 'queen_year', 'queen_marked', 'status', 'notes', 'created_at', 'deleted'],
   inspections: ['id', 'hive_id', 'inspected_at', 'temperament', 'queen_status', 'brood_frames', 'brood_pattern', 'honey_frames', 'pollen_frames', 'space', 'pests', 'afb_suspect', 'actions', 'notes', 'score', 'weather', 'created_at', 'deleted'],
   photos: ['id', 'hive_id', 'inspection_id', 'tag', 'storage_path', 'width', 'height', 'taken_at', 'created_at', 'deleted'],
+  blooms: ['id', 'plant_id', 'apiary_id', 'province', 'seen_at', 'note', 'created_at', 'deleted'],
 };
 // Parents before children, so foreign keys hold.
-const PUSH_ORDER: Table[] = ['profiles', 'apiaries', 'hives', 'inspections', 'photos'];
+const PUSH_ORDER: Table[] = ['profiles', 'apiaries', 'hives', 'inspections', 'photos', 'blooms'];
 
 // ---------------- auth ----------------
 let session: Session | null = null;

@@ -3,6 +3,7 @@ import { LuPrinter, LuTriangleAlert, LuCheck } from 'react-icons/lu';
 import * as db from '../db';
 import type { Apiary, Hive, Profile } from '../db';
 import { lsGet, lsSet, queenColour, shortCode } from '../lib';
+import { updateProgress } from '../progress';
 import { qrSvg, type Ecc } from '../qr';
 import { Empty, Field, Pills, Seg, Stepper, Topbar, toast } from '../ui';
 
@@ -124,6 +125,7 @@ export function Labels({ hiveId, apiaryId }: { hiveId?: string; apiaryId?: strin
     }
     tag.textContent = `@page { size: ${stock.sheet ? '210mm 297mm' : `${stock.w}mm ${stock.h}mm`}; margin: 0; }`;
     window.print();
+    updateProgress((p) => ({ ...p, labelsPrintedAt: p.labelsPrintedAt || new Date().toISOString() }));
   };
 
   const toggleApiary = (a: Apiary) => {

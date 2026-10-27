@@ -7,6 +7,49 @@ import {
 } from '../lib';
 import { Empty, Field, Hex, ListLink, Pills, Seg, Sheet, Topbar, back, go, toast } from '../ui';
 import { PhotoAdder, PhotoGrid } from './Photos';
+import { colonyView, STAGE_LABEL, type ColonyView } from '../engine';
+import { LuLightbulb, LuTrendingUp, LuTrendingDown } from 'react-icons/lu';
+
+function Sparkline({ values }: { values: number[] }) {
+  if (values.length < 2) return null;
+  const w = 120, h = 32;
+  const pts = values.map((v, i) => `${(i / (values.length - 1)) * w},${h - (v / 100) * h}`).join(' ');
+  return (
+    <svg width={w} height={h} viewBox={`-2 -2 ${w + 4} ${h + 4}`} role="img" aria-label={`Health trend: ${values.join(', ')}`}>
+      <polyline points={pts} fill="none" stroke="var(--primary-strong)" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function ColonyCard({ view }: { view: ColonyView }) {
+  const t = view.trend;
+  const delta = t.length >= 2 ? t[t.length - 1] - t[t.length - 2] : 0;
+  return (
+    <>
+      <h3 className="h2">Colony</h3>
+      <div className="card stack">
+        <div className="row between">
+          <div><div className="eyebrow">Stage</div><b>{STAGE_LABEL[view.stage]}</b></div>
+          <div><div className="eyebrow">Strength</div><b>{view.strength ?? '–'}{view.strength != null && '/100'}</b></div>
+          <div style={{ textAlign: 'right' }}><div className="eyebrow">Trend</div>
+            {t.length >= 2 ? <span className={delta >= 0 ? 'tone-good' : 'tone-bad'}>{delta >= 0 ? <LuTrendingUp /> : <LuTrendingDown />} {delta > 0 ? '+' : ''}{delta}</span> : <span className="muted small">Needs 2 inspections</span>}
+          </div>
+        </div>
+        <Sparkline values={t} />
+        {view.flags.length > 0 && (
+          <div className="stack" style={{ gap: 6 }}>
+            {view.flags.map((f) => <div key={f.id} className={`small tone-${f.tone}`}><LuTriangleAlert style={{ verticalAlign: -2 }} /> {f.text}</div>)}
+          </div>
+        )}
+        <div className={`banner ${view.action.tone}`}>
+          <LuLightbulb />
+          <div><b>Next step: {view.action.title}</b><p>{view.action.why}</p></div>
+        </div>
+        <p className="small muted" style={{ margin: 0 }}>Draft advice from your records, awaiting review by an experienced South African beekeeper. It never replaces your own judgement or your mentor.</p>
+      </div>
+    </>
+  );
+}
 
 export function HiveDetail({ id }: { id: string }) {
   const data = db.useLive(async () => {
@@ -28,6 +71,7 @@ export function HiveDetail({ id }: { id: string }) {
   if (!hive) return (<><Topbar title="Hive" backTo="/apiaries" /><Empty title="Hive not found" text="It may have been deleted." /></>);
   const last = inspections[0];
   const qc = queenColour(hive.queen_year);
+  const view = colonyView(hive, apiary, inspections);
   const st = statusInfo(hive.status);
 
   return (
@@ -56,6 +100,8 @@ export function HiveDetail({ id }: { id: string }) {
       </div>
 
       <a className="btn ghost" href={`#/labels?hive=${id}`} style={{ marginTop: 10 }}><LuQrCode /> Print QR label</a>
+
+      <ColonyCard view={view} />
 
       <h3 className="h2">About this hive</h3>
       <div className="card">

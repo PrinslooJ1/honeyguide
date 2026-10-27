@@ -14,6 +14,10 @@ import { Onboarding } from './screens/Onboarding';
 import { LockScreen } from './screens/Lock';
 import { Labels } from './screens/Labels';
 import { CodeLink, Scan } from './screens/Scan';
+import { ForageLibrary, PlantDetail } from './screens/Forage';
+import { Safety } from './screens/Safety';
+import { Academy, LessonView } from './screens/Learn';
+import { FlowerMatch, HiveDoctor, PlayHub, WaggleLab } from './screens/Play';
 
 applyTheme();
 
@@ -63,6 +67,15 @@ function App() {
   else if (path === '/scan') screen = <Scan then={query.get('then') || undefined} />;
   else if (seg[0] === 'h' && seg[1]) screen = <CodeLink code={decodeURIComponent(seg[1])} />;
   else if (path === '/labels') screen = <Labels hiveId={query.get('hive') || undefined} apiaryId={query.get('apiary') || undefined} />;
+  else if (path === '/forage') screen = <ForageLibrary />;
+  else if (seg[0] === 'plant' && seg[1]) screen = <PlantDetail id={seg[1]} />;
+  else if (path === '/safety') screen = <Safety />;
+  else if (path === '/learn') screen = <Academy />;
+  else if (seg[0] === 'learn' && seg[1]) screen = <LessonView id={seg[1]} />;
+  else if (path === '/play') screen = <PlayHub />;
+  else if (path === '/play/waggle') screen = <WaggleLab />;
+  else if (path === '/play/flowers') screen = <FlowerMatch />;
+  else if (path === '/play/doctor') screen = <HiveDoctor />;
   else if (path.startsWith('/more')) screen = <More />;
   else screen = <Home />;
 

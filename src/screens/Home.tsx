@@ -3,6 +3,9 @@ import * as db from '../db';
 import type { Apiary, Hive, Inspection, Profile } from '../db';
 import { agoLabel, daysAgo, fmtDateTime, scoreTone, seasonFocus, statusInfo } from '../lib';
 import { Empty, Hex, ListLink, SyncChip, Topbar } from '../ui';
+import { snapshot } from '../progress';
+import { LuTrophy, LuFlower2, LuGraduationCap } from 'react-icons/lu';
+import { plantsForProvince, plantMonths } from '../content/forage';
 
 export interface HiveSummary {
   hive: Hive;
@@ -97,7 +100,7 @@ export function Home() {
             </div>
           )}
 
-          <h3 className="h2">Recent inspections</h3>
+          <div className="row between"><h3 className="h2">Recent inspections</h3>{inspections.length > 0 && <a className="small" href="#/log">See all</a>}</div>
           {inspections.length === 0 ? (
             <p className="muted">No inspections yet. Tap the hexagon below to log your first.</p>
           ) : (
@@ -117,8 +120,10 @@ export function Home() {
 
       <h3 className="h2">This season</h3>
       <div className="card"><div className="eyebrow">{season.season} focus</div><p style={{ margin: '6px 0 0' }}>{season.tip}</p></div>
+      <HomeForage province={profile?.province} />
+      <RankCard />
 
-      <h3 className="h2">Safety</h3>
+      <div className="row between"><h3 className="h2">Safety</h3><a className="small" href="#/safety">Safety centre</a></div>
       <div className="banner bad">
         <LuTriangleAlert />
         <div>
@@ -131,5 +136,37 @@ export function Home() {
         </div>
       </div>
     </>
+  );
+}
+
+function HomeForage({ province }: { province?: string }) {
+  const m = new Date().getMonth() + 1;
+  const now = plantsForProvince(province).filter((p) => plantMonths(p, province).includes(m));
+  return (
+    <a className="card row" href="#/forage" style={{ marginTop: 12, textDecoration: 'none' }}>
+      <LuFlower2 style={{ width: 28, height: 28, color: 'var(--primary-strong)', flex: 'none' }} />
+      <div className="grow">
+        <b>In bloom {province ? `in ${province}` : 'now'}</b>
+        <div className="small muted">{now.length ? now.map((p) => p.name).join(', ') : 'Little reported in bloom this month: a likely dearth.'}</div>
+      </div>
+    </a>
+  );
+}
+
+function RankCard() {
+  const s = db.useLive(() => snapshot());
+  if (!s) return null;
+  const pct = s.next ? ((s.xp - s.rank.xp) / (s.next.xp - s.rank.xp)) * 100 : 100;
+  const quest = s.quests.find((q) => q.done < q.of);
+  return (
+    <a className="card" href="#/play" style={{ marginTop: 12, display: 'block', textDecoration: 'none' }}>
+      <div className="row">
+        <LuTrophy style={{ width: 28, height: 28, color: 'var(--primary-strong)', flex: 'none' }} />
+        <div className="grow"><b>{s.rank.name}</b> <span className="small muted">· {s.xp} XP</span>
+          <div className="xp-bar" style={{ marginTop: 6 }}><span style={{ width: `${Math.min(100, pct)}%` }} /></div>
+        </div>
+      </div>
+      {quest && <div className="small" style={{ marginTop: 8 }}><LuGraduationCap style={{ verticalAlign: -2 }} /> Quest: <b>{quest.title}</b> · {quest.done}/{quest.of}</div>}
+    </a>
   );
 }

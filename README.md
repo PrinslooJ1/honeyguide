@@ -46,6 +46,22 @@
   - owner_id can't be changed
   - The rules were tested on a local Postgres. The sharing screens follow once the database is live.
 
+## Phase 3: forage and colony growth
+
+- **Region suggestions on the phone** (`src/region.ts`): province (nearest of about 90 reference towns), rainfall zone and bee zone (Cape, hybrid, African). Shown as *Suggested*, with a button to use it. No coordinates leave the phone.
+- **Forage library** (`src/content/forage.ts`): 14 plant cards with flowering windows reported by beekeepers (SANBI survey), the province windows for saligna gum, how bees use each flower, flags for bird-pollinated and invasive plants, and sources.
+- **Apiary forage**: tag the plants near an apiary to get a 12-month calendar and an 8-week outlook (flow, steady, dearth or pollen gap).
+- **Bloom Watch**: log "in bloom near me" against an apiary, never against a GPS point. The regional map (`regional_blooms`, migration 003) shows only anonymous counts, with at least 3 sightings.
+- **Colony engine** (`src/engine.ts`): strength score, health trend, growth stage, risk flags (capensis, AFB, beetle, chalkbrood, disturbance, low stores before a dearth, absconded) and one next-best action. All rules are drafts awaiting expert review.
+- **Safety centre**: 10177, 112 and 10111, a "read out my position" button (not saved), pre-inspection and hive-moving checklists, fire and hygiene guidance. It gives no chemical doses.
+
+## Phase 4: Academy and game layer
+
+- **Honeyguide Academy** (`src/content/lessons.ts`): 12 lessons, each with a 3-question quiz, an in-app task and sources. Registration facts are checked against GN R.858: registration lasts 24 months, and every hive is marked with the registration number.
+- **Ranks**: Fledgling, Forager, Builder, Keeper, Honeyguide. XP counts at most one inspection per hive per week, with a bonus for calm weather. There are no streaks: a weekly logbook rhythm shows 8 dots.
+- **Quests**: First Steps, Registration Hero, plus a seasonal quest (Spring Build-up, Summer Flow, Autumn Stores Check, Aloe Season).
+- **Labs**: Waggle Dance Lab (drag the flowers and move the sun; about 1 s of waggling per km), Flower Match, and Hive Doctor (6 cases).
+
 ## Run it
 
 ```bash
@@ -58,7 +74,7 @@ Build-time overrides: `SUPABASE_URL` and `SUPABASE_KEY` (publishable key). The d
 
 ## Database
 
-`supabase/migrations/001_init.sql` creates:
+Apply `supabase/migrations/001_init.sql`, `002_apiary_groups.sql` and `003_forage.sql` in order. 001 creates:
 - the tables, with triggers that stamp `updated_at` on the server
 - the row-level security policies
 - the private `photos` bucket
