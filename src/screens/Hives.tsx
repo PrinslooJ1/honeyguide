@@ -3,10 +3,12 @@ import { LuHexagon, LuPencil, LuTrash2, LuTriangleAlert, LuCamera, LuQrCode } fr
 import * as db from '../db';
 import type { Apiary, Hive, Inspection, Photo } from '../db';
 import {
-  HIVE_STATUS, HIVE_TYPES, SCUTELLATA_PROVINCES, SUBSPECIES, agoLabel, fmtDateTime, queenColour, scoreTone, shortCode, statusInfo,
+  HIVE_STATUS, HIVE_TYPES, SCUTELLATA_PROVINCES, SUBSPECIES, agoLabel, fmtDate, fmtDateTime, queenColour, scoreTone, shortCode, statusInfo,
 } from '../lib';
 import { Empty, Field, Hex, ListLink, Pills, Seg, Sheet, Topbar, back, go, toast } from '../ui';
 import { PhotoAdder, PhotoGrid } from './Photos';
+import { AutopsyFields, WeightCard, lossLabel } from './Field';
+import type { Weight } from '../db';
 import { colonyView, STAGE_LABEL, type ColonyView } from '../engine';
 import { LuLightbulb, LuTrendingUp, LuTrendingDown } from 'react-icons/lu';
 
@@ -55,19 +57,20 @@ export function HiveDetail({ id }: { id: string }) {
   const data = db.useLive(async () => {
     const hive = await db.get<Hive>('hives', id);
     if (!hive) return { hive };
-    const [apiary, inspections, photos] = await Promise.all([
+    const [apiary, inspections, photos, weights] = await Promise.all([
       db.get<Apiary>('apiaries', hive.apiary_id),
       db.byIndex<Inspection>('inspections', 'hive_id', id),
       db.byIndex<Photo>('photos', 'hive_id', id),
+      db.byIndex<Weight>('weights', 'hive_id', id),
     ]);
     inspections.sort((a, b) => b.inspected_at.localeCompare(a.inspected_at));
     photos.sort((a, b) => (b.taken_at || '').localeCompare(a.taken_at || ''));
-    return { hive, apiary, inspections, photos };
+    return { hive, apiary, inspections, photos, weights };
   }, [id]);
   const [photoSheet, setPhotoSheet] = useState(false);
 
   if (!data) return null;
-  const { hive, apiary, inspections = [], photos = [] } = data;
+  const { hive, apiary, inspections = [], photos = [], weights = [] } = data;
   if (!hive) return (<><Topbar title="Hive" backTo="/apiaries" /><Empty title="Hive not found" text="It may have been deleted." /></>);
   const last = inspections[0];
   const qc = queenColour(hive.queen_year);
@@ -101,7 +104,16 @@ export function HiveDetail({ id }: { id: string }) {
 
       <a className="btn ghost" href={`#/labels?hive=${id}`} style={{ marginTop: 10 }}><LuQrCode /> Print QR label</a>
 
+      {(hive.status === 'dead' || hive.status === 'absconded') && (
+        <div className="banner warn" style={{ marginTop: 12 }}>
+          <LuTriangleAlert />
+          <div><b>{hive.status === 'dead' ? 'Colony lost' : 'Colony absconded'}{hive.lost_at ? ` · ${fmtDate(hive.lost_at)}` : ''}</b>
+            <p>Likely cause: {lossLabel(hive.loss_cause)}. {hive.loss_cause ? '' : 'Edit the hive to record what you think happened.'}</p></div>
+        </div>
+      )}
+
       <ColonyCard view={view} />
+      <WeightCard hiveId={id} weights={weights} />
 
       <h3 className="h2">About this hive</h3>
       <div className="card">
@@ -201,6 +213,7 @@ export function HiveForm({ id, apiaryId }: { id?: string; apiaryId?: string }) {
         <div className="field"><span>Status</span>
           <Pills label="Hive status" single options={HIVE_STATUS.map((s) => ({ value: s.value, label: s.label }))} value={[h.status || 'active']} onChange={(v) => set({ status: v[0] || 'active' })} />
         </div>
+        <AutopsyFields hive={h} set={set} />
         <Field label="Queen year" hint="sets the marking colour">
           <select className="input" value={h.queen_year || ''} onChange={(e) => set({ queen_year: e.target.value ? Number(e.target.value) : null })}>
             <option value="">Unknown</option>

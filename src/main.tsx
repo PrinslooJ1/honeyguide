@@ -18,6 +18,7 @@ import { ForageLibrary, PlantDetail } from './screens/Forage';
 import { Safety } from './screens/Safety';
 import { Academy, LessonView } from './screens/Learn';
 import { FlowerMatch, HiveDoctor, PlayHub, WaggleLab } from './screens/Play';
+import { TrapDetail, TrapForm, TrapList } from './screens/Field';
 
 applyTheme();
 
@@ -67,6 +68,10 @@ function App() {
   else if (path === '/scan') screen = <Scan then={query.get('then') || undefined} />;
   else if (seg[0] === 'h' && seg[1]) screen = <CodeLink code={decodeURIComponent(seg[1])} />;
   else if (path === '/labels') screen = <Labels hiveId={query.get('hive') || undefined} apiaryId={query.get('apiary') || undefined} />;
+  else if (path === '/traps') screen = <TrapList />;
+  else if (path === '/trap/new') screen = <TrapForm />;
+  else if (seg[0] === 'trap' && seg[2] === 'edit') screen = <TrapForm id={seg[1]} />;
+  else if (seg[0] === 'trap' && seg[1]) screen = <TrapDetail id={seg[1]} />;
   else if (path === '/forage') screen = <ForageLibrary />;
   else if (seg[0] === 'plant' && seg[1]) screen = <PlantDetail id={seg[1]} />;
   else if (path === '/safety') screen = <Safety />;

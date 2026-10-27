@@ -21,9 +21,16 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(req.url);
   // Never cache API, auth, storage or weather calls: those carry private data.
   if (url.origin !== self.location.origin) return;
-  if (req.mode === 'navigate') {
+  const scope = new URL(self.registration.scope);
+  const isShell = url.pathname === scope.pathname || url.pathname === scope.pathname + 'index.html';
+  if (req.mode === 'navigate' && isShell) {
     // App shell first, so it opens instantly with no signal; a new version arrives with the next worker.
     event.respondWith(caches.match('./').then((hit) => hit || fetch(req)));
+    return;
+  }
+  if (req.mode === 'navigate') {
+    // Other pages (privacy policy, account deletion): network first, cached copy offline.
+    event.respondWith(fetch(req).catch(() => caches.match(req, { ignoreSearch: true })));
     return;
   }
   event.respondWith(caches.match(req).then((hit) => hit || fetch(req)));

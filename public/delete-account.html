@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en-ZA">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Delete your Honeyguide account</title>
+<meta name="description" content="Delete your Honeyguide: Beekeeping SA account and all data stored in the cloud." />
+<link rel="icon" href="icons/icon-192.png" />
+<style>
+  :root { --bg: #FFF8EA; --surface: #fff; --text: #1C1A17; --muted: #6E6457; --border: #E8D9BC; --primary: #F5A524; --bad: #B3261E; color-scheme: light; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #15130F; --surface: #1F1C17; --text: #F6EEDF; --muted: #B3A794; --border: #3A342A; --bad: #FF8A80; color-scheme: dark; } }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.55 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+  main { max-width: 560px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-family: 'Iowan Old Style', Georgia, serif; font-size: 30px; margin: 0 0 8px; }
+  h2 { font-size: 19px; margin: 28px 0 8px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px; display: grid; gap: 12px; }
+  label { display: grid; gap: 6px; font-weight: 600; font-size: 15px; }
+  input { font: inherit; min-height: 50px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
+  button { font: inherit; font-weight: 700; min-height: 52px; border: 0; border-radius: 14px; cursor: pointer; background: var(--primary); color: #1C1A17; }
+  button.danger { background: var(--bad); color: #fff; }
+  button:disabled { opacity: .5; cursor: default; }
+  .muted { color: var(--muted); font-size: 15px; }
+  .msg { padding: 12px 14px; border-radius: 12px; background: rgba(0,0,0,.05); }
+  a { color: #C77C00; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Delete your account</h1>
+  <p>This permanently deletes your Honeyguide account and everything stored in the cloud for it: apiaries, hives, inspections, photos, bloom sightings and memberships of shared apiaries. It cannot be undone.</p>
+  <p class="muted">Records kept on your phone are not touched. To remove those too, open Honeyguide › More › Your data › Remove all data from this phone, or uninstall the app.</p>
+
+  <h2>In the app</h2>
+  <p>Open Honeyguide › More › Your data › <b>Delete my account and cloud data</b>.</p>
+
+  <h2>On this page</h2>
+  <div class="card" id="signin">
+    <label>Email <input id="email" type="email" autocomplete="email" /></label>
+    <label>Password <input id="password" type="password" autocomplete="current-password" /></label>
+    <button id="go">Sign in to continue</button>
+  </div>
+  <div class="card" id="confirm" hidden>
+    <p id="who" style="margin:0"></p>
+    <label>Type DELETE to confirm <input id="typed" autocomplete="off" /></label>
+    <button id="del" class="danger" disabled>Delete my account permanently</button>
+  </div>
+  <p id="msg" class="msg" role="status" hidden></p>
+
+  <h2>Can't sign in?</h2>
+  <p>Email <span id="contact">[contact email to be added before launch]</span> from the address on your account with the subject "Delete my Honeyguide account". We will delete it within 30 days and confirm by email.</p>
+  <p class="muted">See the <a href="privacy.html">privacy policy</a> for what we store and for how long.</p>
+</main>
+<script type="module">
+  // Same public project settings as the app. The publishable key is designed to be public;
+  // row-level security limits every request to the signed-in user's own data.
+  const URL_ = 'https://qtpawlgptjeebcqftxvx.supabase.co';
+  const KEY = 'sb_publishable_D6Lo3IYwL4u5XehXhsHyBQ_qq30zTnx';
+  const $ = (id) => document.getElementById(id);
+  let token = null;
+  const say = (t) => { $('msg').hidden = false; $('msg').textContent = t; };
+
+  $('go').onclick = async () => {
+    $('go').disabled = true;
+    try {
+      const r = await fetch(`${URL_}/auth/v1/token?grant_type=password`, {
+        method: 'POST', headers: { apikey: KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: $('email').value.trim(), password: $('password').value }),
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error_description || j.msg || 'Sign-in failed');
+      token = j.access_token;
+      $('signin').hidden = true; $('confirm').hidden = false; $('msg').hidden = true;
+      $('who').textContent = `Signed in as ${j.user?.email}. Deleting removes this account and all its cloud data.`;
+    } catch (e) { say(e.message); } finally { $('go').disabled = false; }
+  };
+  $('typed').oninput = () => { $('del').disabled = $('typed').value.trim() !== 'DELETE'; };
+  $('del').onclick = async () => {
+    $('del').disabled = true;
+    const h = { apikey: KEY, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+    try {
+      // Photo files first (table rows go with the account).
+      const ph = await fetch(`${URL_}/rest/v1/photos?select=storage_path&storage_path=not.is.null`, { headers: h });
+      const paths = ph.ok ? (await ph.json()).map((p) => p.storage_path) : [];
+      if (paths.length) await fetch(`${URL_}/storage/v1/object/photos`, { method: 'DELETE', headers: h, body: JSON.stringify({ prefixes: paths }) });
+      const r = await fetch(`${URL_}/rest/v1/rpc/delete_my_account`, { method: 'POST', headers: h, body: '{}' });
+      if (!r.ok) throw new Error(`Deletion failed (${r.status}). Please email us instead.`);
+      $('confirm').hidden = true;
+      say('Your account and its cloud data have been deleted.');
+    } catch (e) { say(e.message); $('del').disabled = false; }
+  };
+</script>
+</body>
+</html>

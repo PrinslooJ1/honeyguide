@@ -38,7 +38,7 @@ function listFiles(dir, base = dir) {
 }
 
 function stampServiceWorker() {
-  const files = listFiles(out).filter((f) => f !== 'sw.js' && !f.endsWith('.map'));
+  const files = listFiles(out).filter((f) => f !== 'sw.js' && !f.endsWith('.map') && !f.startsWith('store/'));
   const hash = createHash('sha1');
   for (const f of files) hash.update(readFileSync(join(out, f)));
   const version = hash.digest('hex').slice(0, 10);

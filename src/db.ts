@@ -1,8 +1,8 @@
 // Tiny IndexedDB layer. Every record lives on the phone first; sync is a background extra.
 import { useEffect, useState } from 'react';
 
-export type Table = 'profiles' | 'apiaries' | 'hives' | 'inspections' | 'photos' | 'blooms';
-export const TABLES: Table[] = ['profiles', 'apiaries', 'hives', 'inspections', 'photos', 'blooms'];
+export type Table = 'profiles' | 'apiaries' | 'hives' | 'inspections' | 'photos' | 'blooms' | 'traps' | 'weights';
+export const TABLES: Table[] = ['profiles', 'apiaries', 'hives', 'inspections', 'photos', 'blooms', 'traps', 'weights'];
 
 export interface Base {
   id: string;
@@ -42,6 +42,8 @@ export interface Hive extends Base {
   queen_marked?: boolean;
   status?: string;
   notes?: string;
+  loss_cause?: string | null; // colony autopsy, when dead or absconded
+  lost_at?: string | null;
 }
 
 export interface Weather {
@@ -69,6 +71,32 @@ export interface Inspection extends Base {
   weather?: Weather | null;
 }
 
+/** Swarm trap (bait box). Its location note and pin are private like an apiary's. */
+export interface Trap extends Base {
+  name: string;
+  apiary_id?: string | null;
+  location_note?: string;
+  lat?: number | null;
+  lng?: number | null;
+  lure?: string;
+  placed_at: string;
+  check_every_days: number;
+  last_checked_at?: string | null;
+  status: 'set' | 'occupied' | 'collected' | 'removed';
+  caught_at?: string | null;
+  hive_id?: string | null;
+  notes?: string;
+}
+
+/** Weekly weight from a hive scale, or a lift test when there is no scale. */
+export interface Weight extends Base {
+  hive_id: string;
+  weighed_at: string;
+  kg?: number | null;
+  lift?: 'light' | 'medium' | 'heavy' | null;
+  notes?: string;
+}
+
 /** Bloom Watch: "in bloom here now". Holds the apiary (if any), never a fresh GPS point. */
 export interface Bloom extends Base {
   plant_id: string;
@@ -89,7 +117,7 @@ export interface Photo extends Base {
 }
 
 const DB_NAME = 'honeyguide';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 let dbPromise: Promise<IDBDatabase> | null = null;
 
 function open(): Promise<IDBDatabase> {
@@ -105,6 +133,7 @@ function open(): Promise<IDBDatabase> {
           if (t === 'hives') s.createIndex('apiary_id', 'apiary_id');
           if (t === 'inspections' || t === 'photos') s.createIndex('hive_id', 'hive_id');
           if (t === 'blooms') s.createIndex('plant_id', 'plant_id');
+          if (t === 'weights') s.createIndex('hive_id', 'hive_id');
         }
       }
       if (!db.objectStoreNames.contains('blobs')) db.createObjectStore('blobs');

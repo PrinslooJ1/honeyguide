@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { LuSiren, LuFlower2, LuGraduationCap, LuHistory, LuQrCode, LuScanQrCode, LuCloud, LuDownload, LuLock, LuLogOut, LuRefreshCw, LuShieldCheck, LuTrash2, LuUser, LuPhone, LuMail } from 'react-icons/lu';
+import { LuBox, LuSiren, LuFlower2, LuGraduationCap, LuHistory, LuQrCode, LuScanQrCode, LuCloud, LuDownload, LuLock, LuLogOut, LuRefreshCw, LuShieldCheck, LuTrash2, LuUser, LuPhone, LuMail } from 'react-icons/lu';
 import * as db from '../db';
 import type { Profile } from '../db';
 import { APP_VERSION } from '../config';
@@ -198,6 +198,7 @@ export function More() {
         <a className="btn secondary" href="#/forage"><LuFlower2 /> Forage</a>
         <a className="btn secondary" href="#/learn"><LuGraduationCap /> Academy</a>
         <a className="btn secondary" href="#/log"><LuHistory /> Inspection log</a>
+        <a className="btn secondary" href="#/traps"><LuBox /> Swarm traps</a>
       </div>
 
       <h3 className="h2">Hive labels</h3>
@@ -213,7 +214,7 @@ export function More() {
         {session && <button className="btn ghost" style={{ color: 'var(--bad)' }} onClick={delAccount}><LuTrash2 /> Delete my account and cloud data</button>}
       </div>
 
-      <p className="small muted" style={{ marginTop: 24, textAlign: 'center' }}>Honeyguide {APP_VERSION} · Phase 1 prototype<br />Guidance in this app is general information, not veterinary or legal advice.</p>
+      <p className="small muted" style={{ marginTop: 24, textAlign: 'center' }}>Honeyguide {APP_VERSION} · Phase 1 prototype<br />Guidance in this app is general information, not veterinary or legal advice.<br /><a href="privacy.html" target="_blank" rel="noreferrer">Privacy policy</a> · <a href="delete-account.html" target="_blank" rel="noreferrer">Delete account on the web</a></p>
     </>
   );
 }

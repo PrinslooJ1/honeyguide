@@ -4,7 +4,9 @@ import type { Apiary, Hive, Inspection, Profile } from '../db';
 import { agoLabel, daysAgo, fmtDateTime, scoreTone, seasonFocus, statusInfo } from '../lib';
 import { Empty, Hex, ListLink, SyncChip, Topbar } from '../ui';
 import { snapshot } from '../progress';
-import { LuTrophy, LuFlower2, LuGraduationCap } from 'react-icons/lu';
+import { trapDue } from './Field';
+import type { Trap } from '../db';
+import { LuTrophy, LuFlower2, LuGraduationCap, LuBox } from 'react-icons/lu';
 import { plantsForProvince, plantMonths } from '../content/forage';
 
 export interface HiveSummary {
@@ -54,7 +56,9 @@ export function Home() {
   monthStart.setDate(1);
   monthStart.setHours(0, 0, 0, 0);
   const thisMonth = inspections.filter((i) => new Date(i.inspected_at) >= monthStart).length;
-  const attention = hives.filter((h) => h.reasons.length).sort((a, b) => (a.last?.afb_suspect ? -1 : 0) - (b.last?.afb_suspect ? -1 : 0));
+  // Most urgent first: disease, then queen problems, swarming, stores, then overdue checks.
+  const urgency = (r: string) => (r.startsWith('AFB') ? 0 : /queen|Laying/i.test(r) ? 1 : /Swarm/.test(r) ? 2 : /stores/.test(r) ? 3 : 4);
+  const attention = hives.filter((h) => h.reasons.length).sort((a, b) => urgency(a.reasons[0]) - urgency(b.reasons[0]));
   const name = profile?.display_name?.split(' ')[0];
 
   return (
@@ -121,6 +125,7 @@ export function Home() {
       <h3 className="h2">This season</h3>
       <div className="card"><div className="eyebrow">{season.season} focus</div><p style={{ margin: '6px 0 0' }}>{season.tip}</p></div>
       <HomeForage province={profile?.province} />
+      <TrapsDue />
       <RankCard />
 
       <div className="row between"><h3 className="h2">Safety</h3><a className="small" href="#/safety">Safety centre</a></div>
@@ -167,6 +172,19 @@ function RankCard() {
         </div>
       </div>
       {quest && <div className="small" style={{ marginTop: 8 }}><LuGraduationCap style={{ verticalAlign: -2 }} /> Quest: <b>{quest.title}</b> · {quest.done}/{quest.of}</div>}
+    </a>
+  );
+}
+
+function TrapsDue() {
+  const traps = db.useLive(() => db.all<Trap>('traps'));
+  const due = (traps || []).filter(trapDue).length;
+  const occupied = (traps || []).filter((t) => t.status === 'occupied').length;
+  if (!due && !occupied) return null;
+  return (
+    <a className="card row" href="#/traps" style={{ marginTop: 12, textDecoration: 'none' }}>
+      <LuBox style={{ width: 28, height: 28, color: 'var(--primary-strong)', flex: 'none' }} />
+      <div className="grow"><b>Swarm traps</b><div className="small muted">{[due && `${due} due a check`, occupied && `${occupied} with bees to move`].filter(Boolean).join(' · ')}</div></div>
     </a>
   );
 }

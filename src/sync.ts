@@ -17,13 +17,15 @@ export const cloudConfigured = Boolean(SUPABASE_URL && SUPABASE_KEY);
 const COLUMNS: Record<Table, string[]> = {
   profiles: ['id', 'display_name', 'province', 'registration_number', 'created_at', 'deleted'],
   apiaries: ['id', 'name', 'province', 'lat', 'lng', 'location_precision', 'landowner', 'permission_notes', 'forage_notes', 'access_notes', 'forage_plants', 'created_at', 'deleted'],
-  hives: ['id', 'apiary_id', 'name', 'code', 'hive_type', 'subspecies', 'queen_year', 'queen_marked', 'status', 'notes', 'created_at', 'deleted'],
+  hives: ['id', 'apiary_id', 'name', 'code', 'hive_type', 'subspecies', 'queen_year', 'queen_marked', 'status', 'notes', 'loss_cause', 'lost_at', 'created_at', 'deleted'],
   inspections: ['id', 'hive_id', 'inspected_at', 'temperament', 'queen_status', 'brood_frames', 'brood_pattern', 'honey_frames', 'pollen_frames', 'space', 'pests', 'afb_suspect', 'actions', 'notes', 'score', 'weather', 'created_at', 'deleted'],
   photos: ['id', 'hive_id', 'inspection_id', 'tag', 'storage_path', 'width', 'height', 'taken_at', 'created_at', 'deleted'],
   blooms: ['id', 'plant_id', 'apiary_id', 'province', 'seen_at', 'note', 'created_at', 'deleted'],
+  traps: ['id', 'name', 'apiary_id', 'location_note', 'lat', 'lng', 'lure', 'placed_at', 'check_every_days', 'last_checked_at', 'status', 'caught_at', 'hive_id', 'notes', 'created_at', 'deleted'],
+  weights: ['id', 'hive_id', 'weighed_at', 'kg', 'lift', 'notes', 'created_at', 'deleted'],
 };
 // Parents before children, so foreign keys hold.
-const PUSH_ORDER: Table[] = ['profiles', 'apiaries', 'hives', 'inspections', 'photos', 'blooms'];
+const PUSH_ORDER: Table[] = ['profiles', 'apiaries', 'hives', 'inspections', 'photos', 'blooms', 'traps', 'weights'];
 
 // ---------------- auth ----------------
 let session: Session | null = null;

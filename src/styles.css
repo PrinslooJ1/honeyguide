@@ -434,3 +434,5 @@ hr.sep { border: 0; border-top: var(--border-w) solid var(--border); margin: 18p
 @media (min-width: 520px) { .waggle { grid-template-columns: 1fr 1fr; } }
 input[type='range'] { width: 100%; accent-color: var(--primary-strong); height: 32px; }
 .list-item > svg:first-child { width: 22px; height: 22px; flex: none; color: var(--primary-strong); }
+.chip { white-space: nowrap; }
+@media (max-width: 420px) { .grid-2.stack-narrow { grid-template-columns: 1fr; } }

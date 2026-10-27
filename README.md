@@ -62,6 +62,22 @@
 - **Quests**: First Steps, Registration Hero, plus a seasonal quest (Spring Build-up, Summer Flow, Autumn Stores Check, Aloe Season).
 - **Labs**: Waggle Dance Lab (drag the flowers and move the sun; about 1 s of waggling per km), Flower Match, and Hive Doctor (6 cases).
 
+## Phase 5: Google Play readiness
+
+- `public/privacy.html`: a POPIA-aware privacy policy matching what the app does (hosted in Frankfurt; Open-Meteo gets only a point rounded to about 1 km; no ads or trackers).
+- `public/delete-account.html`: a working web page that deletes the account and its cloud data, which Play requires alongside the in-app option.
+- `android/twa-manifest.json`: the settings for PWABuilder or Bubblewrap (`com.prinsloo.honeyguide`, location delegation on). `android/assetlinks.template.json` is the template for the site-and-app link.
+- `store/listing.md`: title, descriptions, data safety answers, content rating, target audience and the tester invite.
+- `store/feature-graphic.png` (1024 × 500) and `public/store/screen-1..6.png` (1080 × 1920).
+- `docs/PLAY_RELEASE.md`: the release checklist, step by step.
+- Google Fonts is removed: the app makes no third-party requests except the optional weather.
+
+## Release 1.1: field records
+
+- **Swarm traps**: bait boxes with a private pin or note, lure, check interval, "due a check" on Home, and a catch log. "Moved into a hive" creates the new hive, with the trap and lure recorded.
+- **Colony autopsy**: when a hive is marked dead or absconded, record the likely cause from the national loss-survey list, plus theft, fire and drought.
+- **Weight and lift log**: weekly kg from a scale, or a light/medium/heavy lift test. The trend reads gaining (flow) or losing (dearth or robbing). Migration 004.
+
 ## Run it
 
 ```bash

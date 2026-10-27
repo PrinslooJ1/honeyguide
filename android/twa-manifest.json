@@ -1,0 +1,31 @@
+{
+  "packageId": "com.prinsloo.honeyguide",
+  "host": "REPLACE_WITH_VERCEL_HOST",
+  "name": "Honeyguide: Beekeeping SA",
+  "launcherName": "Honeyguide",
+  "display": "standalone",
+  "orientation": "portrait",
+  "themeColor": "#1C1A17",
+  "themeColorDark": "#15130F",
+  "navigationColor": "#1C1A17",
+  "navigationColorDark": "#15130F",
+  "backgroundColor": "#1C1A17",
+  "startUrl": "/",
+  "iconUrl": "https://REPLACE_WITH_VERCEL_HOST/icons/icon-512.png",
+  "maskableIconUrl": "https://REPLACE_WITH_VERCEL_HOST/icons/maskable-512.png",
+  "webManifestUrl": "https://REPLACE_WITH_VERCEL_HOST/manifest.webmanifest",
+  "appVersionName": "0.1.0",
+  "appVersionCode": 1,
+  "enableNotifications": false,
+  "enableSiteSettingsShortcut": true,
+  "fallbackType": "customtabs",
+  "features": {
+    "locationDelegation": { "enabled": true },
+    "playBilling": { "enabled": false }
+  },
+  "shortcuts": [
+    { "name": "Inspect a hive", "shortName": "Inspect", "url": "/#/inspect", "chosenIconUrl": "https://REPLACE_WITH_VERCEL_HOST/icons/icon-192.png" },
+    { "name": "Scan a hive label", "shortName": "Scan", "url": "/#/scan", "chosenIconUrl": "https://REPLACE_WITH_VERCEL_HOST/icons/icon-192.png" }
+  ],
+  "fingerprints": []
+}

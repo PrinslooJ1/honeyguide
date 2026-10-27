@@ -170,7 +170,7 @@ export function Labels({ hiveId, apiaryId }: { hiveId?: string; apiaryId?: strin
               options={[{ value: 'M', label: 'Standard' }, { value: 'Q', label: 'Outdoor' }, { value: 'H', label: 'Rugged' }]} />
             <span className="small muted">Higher tolerance still scans when propolis, dirt or scratches cover part of the code, but the code gets denser.</span>
           </div>
-          <div className="grid-2">
+          <div className="grid-2 stack-narrow">
             <Field label="Copies per hive"><Stepper label="copies" min={1} max={6} value={prefs.copies} onChange={(v) => setPrefs({ copies: v })} /></Field>
             {stock.sheet && <Field label="Skip used labels" hint="part sheet"><Stepper label="labels to skip" min={0} max={perSheet - 1} value={skip} onChange={(v) => setPrefs({ skip: v })} /></Field>}
           </div>
