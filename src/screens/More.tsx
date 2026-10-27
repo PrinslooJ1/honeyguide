@@ -8,7 +8,10 @@ import { setSettings, useSettings, type Theme } from '../settings';
 import { cloudConfigured, currentSession, deleteAccount, sendMagicLink, signIn, signOut, signUp, syncNow } from '../sync';
 import { Field, ListLink, Seg, Sheet, Topbar, toast, useSync } from '../ui';
 import { useShare } from '../share';
+import { useVaultState } from '../vault';
+import { LuLockKeyhole } from 'react-icons/lu';
 import { PinPad } from './Lock';
+import { lockedGuard } from './Vault';
 
 export function Account() {
   const session = currentSession();
@@ -63,6 +66,7 @@ function ProfileCard() {
   const [draft, setDraft] = useState<Partial<Profile>>({});
   useEffect(() => { if (p) setDraft(p); }, [p?.id, p?.updated_at]);
   const save = async () => {
+    if (lockedGuard(draft)) return;
     await db.save<Profile>('profiles', { ...(draft as Profile), id: draft.id || db.uuid() });
     toast('Profile saved');
   };
@@ -120,6 +124,7 @@ export function More() {
   const session = currentSession();
   const share = useShare();
   const groups = share?.groups.length || 0;
+  const vault = useVaultState();
 
   const exportData = async () => {
     const data = await db.exportAll();
@@ -184,6 +189,9 @@ export function More() {
           <span className="small muted">Sends the apiary's approximate position to Open-Meteo for a forecast. Nothing else is shared.</span>
         </div>
         <div className="field"><span>App lock</span><LockSetup /></div>
+      </div>
+      <div className="list" style={{ marginTop: 12 }}>
+        <ListLink href="/vault" left={<LuLockKeyhole />} title="Vault" sub={vault === 'open' ? 'On: pins, landowners and money are encrypted' : vault === 'locked' ? 'On, locked on this phone' : 'Off · optional end-to-end encryption'} />
       </div>
       <p className="small muted">Photos are shrunk and cleaned of their GPS tag before they are saved. Your records are visible only to you and the people you share an apiary or hive with, limited by their role.</p>
 

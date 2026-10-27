@@ -189,7 +189,7 @@ export async function purgeLostAccess(s: ShareData) {
     // Without exact-location permission, keep only the approximate point (about 1 km).
     if (!isMine(a, me) && a.lat != null && a.lng != null && !memberRoleFor(s, me, s.apiaries.filter((x) => x.apiary_id === a.id).map((x) => x.group_id)).exact) {
       const lat = Math.round(a.lat * 100) / 100, lng = Math.round(a.lng * 100) / 100;
-      if (lat !== a.lat || lng !== a.lng || a.location_precision === 'precise') { await db.putClean('apiaries', { ...a, lat, lng, location_precision: 'approximate' } as Apiary); changed++; }
+      if (lat !== a.lat || lng !== a.lng || a.location_precision === 'precise') { await db.putClean('apiaries', { ...a, lat, lng, location_precision: 'approximate', _exact: 0 } as Apiary); changed++; }
     }
   }
   for (const h of hives) if (!okHive.has(h.id)) { await drop('hives', h); changed++; }

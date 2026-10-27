@@ -135,6 +135,14 @@ export function fmtDateTime(iso?: string) {
   if (!iso) return '';
   return new Date(iso).toLocaleString('en-ZA', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
+/** For date and datetime-local inputs: the instant as local wall time. */
+export function localInput(iso?: string | null, withTime = true) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString();
+  return withTime ? local.slice(0, 16) : local.slice(0, 10);
+}
 export function daysAgo(iso?: string) {
   if (!iso) return null;
   return Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);

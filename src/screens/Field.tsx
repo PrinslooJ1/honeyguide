@@ -6,6 +6,7 @@ import type { Apiary, Hive, Trap, Weight } from '../db';
 import { agoLabel, daysAgo, fmtDate, getPosition, roundCoord, shortCode } from '../lib';
 import { getSettings } from '../settings';
 import { Empty, Field, ListLink, Pills, Seg, Sheet, Stepper, Topbar, back, go, toast } from '../ui';
+import { VaultLockedBanner, lockedGuard } from './Vault';
 
 // ---------------- colony autopsy ----------------
 // Mirrors the causes beekeepers named in the national loss survey (Pirk et al. 2014), plus theft, fire and drought.
@@ -134,6 +135,7 @@ export function TrapList() {
   return (
     <>
       <Topbar title="Swarm traps" backTo="/more" right={<a className="icon-btn" href="#/trap/new" aria-label="Add trap"><LuPlus /></a>} />
+      <VaultLockedBanner />
       <p className="muted" style={{ marginTop: 0 }}>Most South African beekeepers grow by catching wild swarms. Track your bait boxes, check them on time and log every catch. Trap locations are private to you.</p>
       {traps.length === 0 ? (
         <Empty title="No traps yet" text="Add a bait box when you set it out: where it is, what lure you used and how often to check it." action={<a className="btn" href="#/trap/new"><LuPlus /> Add a trap</a>} />
@@ -175,6 +177,7 @@ export function TrapForm({ id }: { id?: string }) {
     } catch { toast('Could not get a location fix'); }
   };
   const save = async () => {
+    if (lockedGuard(t)) return;
     if (!t.name?.trim()) return toast('Name the trap');
     const rec = await db.save<Trap>('traps', { ...(t as Trap), id: t.id || db.uuid(), name: t.name.trim() });
     toast('Trap saved');

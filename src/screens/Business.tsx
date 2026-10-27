@@ -5,6 +5,7 @@ import type { Batch, Contract, Harvest, Incident, Job, Move } from '../db';
 import { zar } from '../docs';
 import { ListLink, Topbar } from '../ui';
 import { contractTotal } from './Contracts';
+import { VaultLockedBanner } from './Vault';
 
 export function BusinessHub() {
   const data = db.useLive(async () => ({
@@ -24,6 +25,7 @@ export function BusinessHub() {
   return (
     <>
       <Topbar title="Business" backTo="/more" />
+      <VaultLockedBanner />
       <p className="muted" style={{ marginTop: 0 }}>Contracts, honey, moves, callouts and incidents. These records are private to you, even in a shared apiary.</p>
       <div className="grid-2">
         <div className="card stat"><div className="big-num" style={{ fontSize: 24 }}>{zar(paid)}</div><div className="label">Paid to you this year</div></div>

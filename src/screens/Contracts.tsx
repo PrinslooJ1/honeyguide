@@ -6,6 +6,7 @@ import type { Apiary, Contract, ContractStatus, Profile } from '../db';
 import { fmtDate } from '../lib';
 import { InvoiceDoc, getProfile, nextInvoiceNo, printDoc, zar } from '../docs';
 import { Empty, Field, ListLink, Seg, Stepper, Topbar, back, go, toast } from '../ui';
+import { lockedGuard } from './Vault';
 
 export const CONTRACT_STEPS: { value: ContractStatus; label: string }[] = [
   { value: 'draft', label: 'Draft' },
@@ -52,6 +53,7 @@ export function ContractForm({ id }: { id?: string }) {
   const set = (p: Partial<Contract>) => setC({ ...c, ...p });
   const num = (v: string) => (v ? Number(v.replace(',', '.')) : 0);
   const save = async () => {
+    if (lockedGuard(c)) return;
     if (!c.grower?.trim() || !c.crop?.trim()) return toast('Add the grower and the crop');
     const rec = await db.save<Contract>('contracts', { ...(c as Contract), id: c.id || db.uuid(), grower: c.grower.trim(), crop: c.crop.trim() });
     toast('Contract saved');

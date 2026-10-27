@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { LuPlus, LuShieldAlert, LuPrinter, LuPencil, LuTrash2 } from 'react-icons/lu';
 import * as db from '../db';
 import type { Apiary, Hive, Incident, IncidentKind, Inspection, Photo, Profile } from '../db';
-import { fmtDate, fmtDateTime } from '../lib';
+import { fmtDate, fmtDateTime, localInput } from '../lib';
 import { getProfile, printDoc } from '../docs';
 import { Empty, Field, ListLink, Pills, Seg, Topbar, back, go, toast, usePhotoUrl } from '../ui';
 import { PhotoAdder, PhotoGrid } from './Photos';
@@ -52,7 +52,7 @@ export function IncidentForm({ id }: { id?: string }) {
       <Topbar title={id ? 'Edit incident' : 'Log an incident'} backTo="/incidents" />
       <div className="stack">
         <div className="field"><span>What happened</span><Pills label="Kind" single options={KINDS} value={[i.kind || 'theft']} onChange={(v) => set({ kind: (v[0] as IncidentKind) || 'theft' })} /></div>
-        <Field label="When (best estimate)"><input className="input" type="datetime-local" value={(i.occurred_at || '').slice(0, 16)} onChange={(e) => set({ occurred_at: new Date(e.target.value).toISOString() })} /></Field>
+        <Field label="When (best estimate)"><input className="input" type="datetime-local" value={localInput(i.occurred_at)} onChange={(e) => e.target.value && set({ occurred_at: new Date(e.target.value).toISOString() })} /></Field>
         <Field label="Apiary">
           <select className="input" value={i.apiary_id || ''} onChange={(e) => set({ apiary_id: e.target.value || null, hive_ids: [] })}>
             <option value="">Choose apiary</option>

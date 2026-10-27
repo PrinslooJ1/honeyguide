@@ -8,6 +8,7 @@ import { beeZone, zonesForProvince, BEE_ZONE_LABEL, type BeeZone } from '../regi
 import { getSettings, setSettings } from '../settings';
 import { zar } from '../docs';
 import { Empty, Field, ListLink, Pills, Topbar, back, go, toast } from '../ui';
+import { lockedGuard } from './Vault';
 
 const CHECKLIST = [
   'Strap every hive so boxes cannot shift',
@@ -71,6 +72,7 @@ export function MoveForm({ id, fromId }: { id?: string; fromId?: string }) {
   const set = (p: Partial<Move>) => setM({ ...m, ...p });
   const fromHives = data.hives.filter((h) => h.apiary_id === m.from_apiary_id && !['dead', 'absconded'].includes(h.status || 'active'));
   const save = async () => {
+    if (lockedGuard(m)) return;
     if (!m.from_apiary_id || !m.to_apiary_id) return toast('Choose where the hives are moving from and to');
     if (m.from_apiary_id === m.to_apiary_id) return toast('Choose a different destination');
     if (!m.hive_ids?.length) return toast('Choose at least one hive');
@@ -104,7 +106,7 @@ export function MoveForm({ id, fromId }: { id?: string; fromId?: string }) {
             ) : <span className="small muted">No live hives at this apiary.</span>}
           </div>
         )}
-        <Field label="Planned date"><input className="input" type="date" value={m.planned_for || ''} onChange={(e) => set({ planned_for: e.target.value })} /></Field>
+        <Field label="Planned date"><input className="input" type="date" value={m.planned_for || ''} onChange={(e) => e.target.value && set({ planned_for: e.target.value })} /></Field>
         <div className="grid-2 stack-narrow">
           <Field label="Distance (km, one way)"><input className="input" inputMode="decimal" value={m.distance_km ?? ''} onChange={(e) => set({ distance_km: e.target.value ? Number(e.target.value.replace(',', '.')) : null })} /></Field>
           <Field label="Cost per km (R)" hint="your figure"><input className="input" inputMode="decimal" value={m.cost_per_km ?? ''} onChange={(e) => set({ cost_per_km: e.target.value ? Number(e.target.value.replace(',', '.')) : null })} /></Field>

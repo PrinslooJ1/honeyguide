@@ -30,6 +30,7 @@ import { AgreementDetail, AgreementForm, LandownerList, migrateLandowners } from
 import { EquipmentDetail, EquipmentForm, EquipmentList } from './screens/Equipment';
 import { LossSurvey } from './screens/Survey';
 import { SeasonReplay } from './screens/Replay';
+import { VaultScreen } from './screens/Vault';
 
 applyTheme();
 
@@ -120,6 +121,7 @@ function App() {
   else if (seg[0] === 'equipment' && seg[1]) screen = <EquipmentDetail id={seg[1]} />;
   else if (path === '/survey') screen = <LossSurvey />;
   else if (path === '/replay') screen = <SeasonReplay />;
+  else if (path === '/vault') screen = <VaultScreen />;
   else if (path === '/forage') screen = <ForageLibrary />;
   else if (seg[0] === 'plant' && seg[1]) screen = <PlantDetail id={seg[1]} />;
   else if (path === '/safety') screen = <Safety />;

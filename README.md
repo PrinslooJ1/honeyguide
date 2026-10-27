@@ -1,11 +1,11 @@
 # Honeyguide: Beekeeping SA
 
-*Beekeeping, guided.* An offline-first hive log built for South African beekeepers. This is the **Phase 1 prototype** from the Honeyguide plan.
+*Beekeeping, guided.* An offline-first hive log built for South African beekeepers. This is the **beta** of the Honeyguide plan: phases 1 to 5 and the post-launch releases 1.1 to 1.4.
 
 ## What works now
 
 - **Onboarding**: name, home province, experience, beekeeper registration number.
-- **Apiaries**: name, province, an optional location pin (approximate, about 1 km, or exact), landowner, permission, forage and access notes.
+- **Apiaries**: name, province, an optional location pin (approximate, about 1 km, or exact), forage and access notes. Landowner details live in the private landowner log (release 1.4).
 - **Hives**: type, Cape or African bee, queen year with the international marking colour, status, notes, and a short code (`HG-XXXX`) ready for Phase 2 QR labels. A warning appears if Cape bees are kept in an African-bee province.
 - **Guided inspection**: 7 steps sized for gloved hands, each answered with a tap.
   - The steps are colony, queen, brood, stores and space, pests and disease, actions and photos, and review.
@@ -44,7 +44,7 @@
   - invite codes
   - exact GPS kept in its own table, so members see only the roughly 1 km point unless the owner allows the exact one
   - owner_id can't be changed
-  - The rules were tested on a local Postgres. The sharing screens follow once the database is live.
+  - The rules were tested on a local Postgres. The sharing screens arrived in release 1.4.
 
 ## Phase 3: forage and colony growth
 
@@ -99,6 +99,28 @@
 - **Theft and incident pack** (`src/screens/Incidents.tsx`): log what happened, which hives, photos and the SAPS case number. The printable report pack lists your registration number, the hive codes on the boxes, last-inspection dates and photos. The apiary GPS is included only if you choose.
 - **Business hub**: paid this year, still owed, and links to all of the above. Business records are owner-only, even in shared apiaries (migration 005).
 
+## Release 1.4: sharing, mentors, landowners, equipment, survey, Vault
+
+- **Sharing** (`src/share.ts`, `src/screens/Share.tsx`, More › Sharing):
+  - create a group, tick the apiaries to share, and invite by QR code, WhatsApp link or a 6-character code
+  - roles partner, helper and viewer; cover mode ends access by itself; the owner can change roles, allow exact locations for partners, end access or remove members
+  - screens follow the role: viewers see and comment, helpers also inspect, partners also edit; only owners delete (enforced in the database too)
+  - recent activity ("Pieter inspected Hive 2"), and a Home card for new comments
+  - the shared apiary row carries only a point rounded to about 1 km; the exact pin goes to `apiary_locations`
+  - when access ends, or on sign-out, shared records leave the phone; changes the server refuses stay on the phone, flagged, to retry or discard
+- **Mentor mode**: "Ask a mentor" on a hive makes a one-hive, view-only link for 3 days to a month. The mentor sees that hive's inspections, photos and comments, and can comment. Not the apiary, its location or other hives.
+- **Landowner log** (`src/screens/Landowners.tsx`): landowner, phone, kind of permission, dates and terms, a reminder before it runs out (Home card), and a site log of complaints, visits and honey given. Private to the owner.
+- **Equipment and cleaning log** (`src/screens/Equipment.tsx`): what you have and where, cleaning history, and quarantine for boxes from a dead-out ("Log the empty boxes" on a lost hive). Kit from a colony with suspected foulbrood stays in quarantine until official advice.
+- **Loss survey** (`src/screens/Survey.tsx`): an opt-in, anonymous end-of-season survey, pre-filled from your records and sent through `submit_loss_survey()` with the public key only, so it is not linked to the account.
+- **Season replay** (`src/screens/Replay.tsx`): a year-in-review card drawn on the phone, shared as a picture or as WhatsApp text.
+- **Vault** (`src/vault.ts`, More › Vault): optional end-to-end encryption. A random AES-GCM key encrypts exact pins, landowner details, contract and callout details and fees, move costs and invoice details before upload; the server keeps placeholders and an `enc` column. The key is stored only wrapped by a PBKDF2 key from the passphrase (600,000 iterations), so another phone can unlock with the passphrase. A forgotten passphrase cannot be recovered. Not yet: sharing the Vault key with group members, so partners see the rounded point while the Vault is on.
+- Migrations 006 (helpers moved to a private schema), 007 (hive shares, comments, landowner log, equipment, survey) and 008 (Vault columns).
+
+## Tests
+
+- `tests/db/run.sh`: a throwaway local Postgres 16 with every migration and the row-level security checks for sharing, mentors, deletes, the survey and inserts that return rows.
+- `tests/e2e/run.sh`: a local stand-in for Supabase (`tests/mock/server.mjs`: auth, a PostgREST subset and storage over the real migrations and policies) and Playwright tests with three phones (`sharing.cjs`) and two phones (`vault.cjs`).
+
 ## Run it
 
 ```bash
@@ -111,7 +133,7 @@ Build-time overrides: `SUPABASE_URL` and `SUPABASE_KEY` (publishable key). The d
 
 ## Database
 
-Apply `supabase/migrations/001_init.sql` to `005_business.sql` in order. 001 creates:
+Apply `supabase/migrations/001_init.sql` to `008_vault.sql` in order. 001 creates:
 - the tables, with triggers that stamp `updated_at` on the server
 - the row-level security policies
 - the private `photos` bucket
@@ -127,8 +149,8 @@ This prototype uses React 19 bundled with esbuild, a small IndexedDB layer (`src
 
 ## Next (from the plan)
 
-- Phase 2: QR labels and print studio, Apiary Groups for sharing with a partner beekeeper.
-- Phase 3: forage library and bloom calendar, region suggestions from GPS, colony growth engine.
-- Phase 5: Google Play packaging as a Trusted Web Activity (PWABuilder), Digital Asset Links, closed test.
+- Deploy on Vercel, set the Supabase Auth URLs, and build the Android package with PWABuilder (Trusted Web Activity, Digital Asset Links).
+- Google Play: store listing, data safety form, and the 14-day closed test with 12 or more testers.
+- Later: sharing the Vault key with chosen members, Afrikaans, realtime updates for shared apiaries.
 
 Guidance in the app is general information, not veterinary or legal advice.

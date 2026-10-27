@@ -3,10 +3,11 @@ import { useEffect, useState } from 'react';
 import { LuPlus, LuBriefcase, LuPrinter, LuPencil, LuTrash2, LuPhone, LuTriangleAlert } from 'react-icons/lu';
 import * as db from '../db';
 import type { Apiary, Hive, Job, JobOutcome, Photo, Profile } from '../db';
-import { fmtDate, shortCode } from '../lib';
+import { fmtDate, shortCode, localInput } from '../lib';
 import { InvoiceDoc, getProfile, nextInvoiceNo, printDoc, zar } from '../docs';
 import { Empty, Field, ListLink, Pills, Sheet, Topbar, back, go, toast } from '../ui';
 import { PhotoAdder, PhotoGrid } from './Photos';
+import { lockedGuard } from './Vault';
 
 export const OUTCOMES: { value: JobOutcome; label: string }[] = [
   { value: 'removed_live', label: 'Removed alive' },
@@ -51,6 +52,7 @@ export function JobForm({ id }: { id?: string }) {
   if (!j) return null;
   const set = (p: Partial<Job>) => setJ({ ...j, ...p });
   const save = async () => {
+    if (lockedGuard(j)) return;
     if (!j.client_name?.trim()) return toast('Add the client name');
     const rec = await db.save<Job>('jobs', { ...(j as Job), id: j.id || db.uuid(), client_name: j.client_name.trim() });
     toast('Callout saved');
@@ -63,7 +65,7 @@ export function JobForm({ id }: { id?: string }) {
         <Field label="Client"><input className="input" value={j.client_name || ''} onChange={(e) => set({ client_name: e.target.value })} autoFocus={!id} /></Field>
         <Field label="Phone" hint="optional"><input className="input" type="tel" value={j.client_phone || ''} onChange={(e) => set({ client_phone: e.target.value })} /></Field>
         <Field label="Area or address" hint="private"><input className="input" value={j.area || ''} onChange={(e) => set({ area: e.target.value })} placeholder="e.g. Garsfontein, in the garage roof" /></Field>
-        <Field label="Requested"><input className="input" type="date" value={j.requested_at.slice(0, 10)} onChange={(e) => set({ requested_at: new Date(e.target.value).toISOString() })} /></Field>
+        <Field label="Requested"><input className="input" type="date" value={localInput(j.requested_at, false)} onChange={(e) => e.target.value && set({ requested_at: new Date(`${e.target.value}T12:00:00`).toISOString() })} /></Field>
         <Field label="Fee (R)" hint="optional"><input className="input" inputMode="decimal" value={j.fee ?? ''} onChange={(e) => set({ fee: e.target.value ? Number(e.target.value.replace(',', '.')) : null })} /></Field>
         <Field label="Notes" hint="optional"><textarea className="input" value={j.notes || ''} onChange={(e) => set({ notes: e.target.value })} placeholder="Height, access, how long the bees have been there" /></Field>
         <button className="btn" onClick={save}>Save callout</button>

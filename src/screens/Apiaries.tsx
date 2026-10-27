@@ -144,7 +144,7 @@ export function ApiaryForm({ id }: { id?: string }) {
     setLocating(true);
     try {
       const pos = await getPosition();
-      set({ lat: roundCoord(pos.coords.latitude, precision), lng: roundCoord(pos.coords.longitude, precision), location_precision: precision });
+      set({ lat: roundCoord(pos.coords.latitude, precision), lng: roundCoord(pos.coords.longitude, precision), location_precision: precision, _exact: precision === 'precise' ? 1 : 0 } as Partial<Apiary>);
       setGuess(suggestRegion(pos.coords.latitude, pos.coords.longitude));
       toast(precision === 'precise' ? 'Exact location saved' : 'Approximate location saved');
     } catch (e: any) {
@@ -198,7 +198,7 @@ export function ApiaryForm({ id }: { id?: string }) {
             <div className="grid-2">
               <button className="btn secondary" disabled={locating} onClick={() => locate('approximate')}><LuCrosshair /> {locating ? 'Finding…' : 'Approximate'}</button>
               {mode === 'precise' && <button className="btn secondary" disabled={locating} onClick={() => locate('precise')}><LuMapPin /> Exact pin</button>}
-              {a.lat != null && <button className="btn ghost" onClick={() => set({ lat: null, lng: null, location_precision: 'off' })}>Clear</button>}
+              {a.lat != null && <button className="btn ghost" onClick={() => set({ lat: null, lng: null, location_precision: 'off', _exact: 0 } as Partial<Apiary>)}>Clear</button>}
             </div>
           )}
           {guess && (

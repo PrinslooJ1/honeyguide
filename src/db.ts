@@ -76,6 +76,18 @@ export interface Inspection extends Base {
   weather?: Weather | null;
 }
 
+/**
+ * Does this phone hold the apiary's exact pin? Another phone may have only the rounded point
+ * from the shared row; it must never send that up as the exact pin. Older records have no flag:
+ * then a pin with more than two decimals counts as exact.
+ */
+export function hasExactPin(a: Partial<Apiary> & { _exact?: number }) {
+  if (a.location_precision !== 'precise' || a.lat == null || a.lng == null) return false;
+  if (a._exact !== undefined) return a._exact === 1;
+  const fine = (v: number) => Math.abs(v * 100 - Math.round(v * 100)) > 1e-6;
+  return fine(a.lat) || fine(a.lng);
+}
+
 /** Swarm trap (bait box). Its location note and pin are private like an apiary's. */
 export interface Trap extends Base {
   name: string;

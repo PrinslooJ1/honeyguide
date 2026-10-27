@@ -7,6 +7,7 @@ import type { Agreement, AgreementKind, Apiary, SiteEvent, SiteEventKind } from 
 import { fmtDate } from '../lib';
 import { myId } from '../share';
 import { Empty, Field, ListLink, Pills, Seg, Sheet, Topbar, back, go, toast } from '../ui';
+import { VaultLockedBanner, lockedGuard } from './Vault';
 
 export const AGREEMENT_KINDS: { value: AgreementKind; label: string }[] = [
   { value: 'verbal', label: 'Verbal' },
@@ -99,6 +100,7 @@ export function LandownerList() {
   return (
     <>
       <Topbar title="Landowners" backTo="/more" right={<a className="icon-btn" href="#/agreement/new" aria-label="Add a landowner"><LuPlus /></a>} />
+      <VaultLockedBanner />
       <p className="muted" style={{ marginTop: 0 }}>Who lets your bees stand on their land, until when, and what you agreed. Private to you, even in a shared apiary.</p>
       {data.agreements.length === 0 ? (
         <Empty title="No landowners yet" text="Add the farmer or neighbour for each site, with their number and when the permission runs out. Honeyguide reminds you before it does."
@@ -122,6 +124,7 @@ export function AgreementForm({ id, apiaryId }: { id?: string; apiaryId?: string
   if (!a || !apiaries) return null;
   const set = (p: Partial<Agreement>) => setA({ ...a, ...p });
   const save = async () => {
+    if (lockedGuard(a)) return;
     if (!a.landowner?.trim()) return toast('Add the landowner\'s name');
     if (a.starts_on && a.expires_on && a.expires_on < a.starts_on) return toast('The end date is before the start date');
     const rec = await db.save<Agreement>('agreements', { ...(a as Agreement), id: a.id || db.uuid(), landowner: a.landowner.trim() });
