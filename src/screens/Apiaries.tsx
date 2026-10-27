@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { LuCrosshair, LuMapPin, LuPencil, LuPlus, LuTrash2, LuThermometer, LuShieldCheck } from 'react-icons/lu';
+import { LuQrCode, LuCrosshair, LuMapPin, LuPencil, LuPlus, LuTrash2, LuThermometer, LuShieldCheck } from 'react-icons/lu';
 import * as db from '../db';
 import type { Apiary, Hive, Profile, Weather } from '../db';
 import { PROVINCES, fetchWeather, getPosition, inspectionWeatherVerdict, roundCoord, scoreTone, statusInfo } from '../lib';
@@ -74,7 +74,10 @@ export function ApiaryDetail({ id }: { id: string }) {
 
       <div className="row between">
         <h3 className="h2">Hives</h3>
-        <a className="btn small secondary" href={`#/hive/new?apiary=${id}`}><LuPlus /> Add hive</a>
+        <div className="row" style={{ gap: 8 }}>
+          {data.hives.length > 0 && <a className="btn small ghost" href={`#/labels?apiary=${id}`} aria-label="Print labels for this apiary"><LuQrCode /> Labels</a>}
+          <a className="btn small secondary" href={`#/hive/new?apiary=${id}`}><LuPlus /> Add hive</a>
+        </div>
       </div>
       {data.hives.length === 0 ? (
         <Empty title="No hives here yet" text="Add each hive box at this site. You can give it a name like 'Hive 1' or 'Aloe row 3'."

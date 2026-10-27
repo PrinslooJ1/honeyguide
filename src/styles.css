@@ -357,3 +357,40 @@ hr.sep { border: 0; border-top: var(--border-w) solid var(--border); margin: 18p
 @keyframes spin { to { transform: rotate(360deg); } }
 
 .grid-2 > .card, .grid-3 > .card { margin-top: 0; }
+
+/* ---------- hive labels (always black on white, whatever the theme) ---------- */
+.label {
+  background: #fff; color: #000; display: flex; align-items: center; overflow: hidden;
+  font-family: var(--font-ui); line-height: 1.15; border-radius: 1.5mm; box-sizing: border-box; filter: none;
+}
+.label-qr { flex: none; }
+.label-qr svg { width: 100%; height: 100%; display: block; }
+.label-text { min-width: 0; display: grid; gap: .6mm; }
+.label-text > div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.label-name { font-family: var(--font-display); font-weight: 700; }
+.label-code { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-weight: 700; letter-spacing: .04em; }
+.label-queen { display: flex; align-items: center; gap: 1mm; }
+.label-queen span { border-radius: 50%; border: .25mm solid #000; display: inline-block; flex: none; }
+.label-hint { font-size: .85em; opacity: .75; }
+.label-preview { background: var(--surface-2); border-radius: var(--radius); padding: 14px; overflow-x: auto; }
+.label-preview-inner { display: grid; gap: 10px; justify-content: start; }
+.label-preview .label { box-shadow: 0 1px 3px rgba(0, 0, 0, .2); outline: 1px dashed #bbb; }
+.print-only { display: none; }
+
+@media print {
+  html, body { background: #fff !important; margin: 0; }
+  .no-print, .nav, .toast, .offline-strip, .topbar { display: none !important; }
+  .app, .main { max-width: none; margin: 0; padding: 0 !important; }
+  .print-only { display: block; }
+  .print-sheet { width: 210mm; height: 297mm; box-sizing: border-box; display: grid; align-content: start; break-after: page; overflow: hidden; }
+  .print-roll .label { break-after: page; }
+  .label { border-radius: 0; }
+  img, svg { filter: none !important; }
+}
+
+/* ---------- scanner ---------- */
+.scanner { position: relative; border-radius: var(--radius); overflow: hidden; background: #000; aspect-ratio: 3 / 4; }
+.scanner video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.scanner .frame { position: absolute; inset: 18%; border: 3px solid var(--primary); border-radius: 18px; box-shadow: 0 0 0 999px rgba(0, 0, 0, .35); }
+.scanner .scan-tools { position: absolute; right: 10px; top: 10px; display: flex; gap: 8px; }
+.scanner .scan-tools .icon-btn { background: rgba(0, 0, 0, .55); color: #fff; }

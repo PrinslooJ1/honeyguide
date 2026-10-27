@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { LuChevronLeft, LuChevronRight, LuCopy, LuThermometer, LuTriangleAlert, LuTrash2, LuCheck } from 'react-icons/lu';
+import { LuScanQrCode, LuChevronLeft, LuChevronRight, LuCopy, LuThermometer, LuTriangleAlert, LuTrash2, LuCheck } from 'react-icons/lu';
 import * as db from '../db';
 import type { Apiary, Hive, Inspection, Photo } from '../db';
 import {
@@ -18,6 +18,7 @@ export function InspectPicker() {
   return (
     <>
       <Topbar title="Inspect a hive" right={<SyncChip />} />
+      {live.length > 0 && <a className="btn secondary" href="#/scan?then=inspect" style={{ marginBottom: 4 }}><LuScanQrCode /> Scan the hive's label</a>}
       {live.length === 0 ? (
         <Empty title="No hives to inspect" text="Add an apiary and a hive first. Then every inspection takes about a minute to log."
           action={<a className="btn" href={data.apiaries.length ? `#/hive/new?apiary=${data.apiaries[0].id}` : '#/apiary/new'}>{data.apiaries.length ? 'Add a hive' : 'Add an apiary'}</a>} />

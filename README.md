@@ -28,6 +28,24 @@
 - **Offline**: a service worker precaches the app, and IndexedDB holds every record. Changes sync when signal returns.
 - **Optional cloud backup** (Supabase): email and password, or a magic link. Each user can only reach their own rows (row-level security) and their own photo folder.
 
+## Phase 2 (in progress)
+
+- **QR hive labels and print studio**:
+  - stock presets: A4 21-up (63.5 × 38.1 mm), A4 24-up (70 × 37 mm), A4 8-up (99.1 × 67.7 mm), and label printer rolls of 50 × 30 mm and 100 × 50 mm
+  - choose which fields show: name, apiary, code, registration number, queen colour, "Scan to log"
+  - damage tolerance, which sets QR error correction M, Q or H
+  - copies per hive, and skipping used labels on a part sheet
+  - a size warning for codes under 20 mm
+  - The encoder is in `src/qr.ts`, with no library. It was verified with OpenCV across all ECC levels and up to 1,200 characters, and from printed PDFs.
+- **Scanner**: uses the phone's built-in barcode detector (Chrome on Android), with a torch toggle and a typed-code fallback. A label links to `#/h/HG-XXXX`, which opens the hive; from the Inspect tab it opens an inspection.
+- **Apiary Groups** (`supabase/migrations/002_apiary_groups.sql`):
+  - sharing with roles owner, partner, helper and viewer
+  - Cover mode (access that expires)
+  - invite codes
+  - exact GPS kept in its own table, so members see only the roughly 1 km point unless the owner allows the exact one
+  - owner_id can't be changed
+  - The rules were tested on a local Postgres. The sharing screens follow once the database is live.
+
 ## Run it
 
 ```bash

@@ -1,4 +1,4 @@
-import { LuHexagon, LuMapPin, LuPhone, LuTriangleAlert, LuLeaf } from 'react-icons/lu';
+import { LuHexagon, LuMapPin, LuPhone, LuTriangleAlert, LuLeaf, LuScanQrCode } from 'react-icons/lu';
 import * as db from '../db';
 import type { Apiary, Hive, Inspection, Profile } from '../db';
 import { agoLabel, daysAgo, fmtDateTime, scoreTone, seasonFocus, statusInfo } from '../lib';
@@ -56,7 +56,7 @@ export function Home() {
 
   return (
     <>
-      <Topbar brand right={<SyncChip />} />
+      <Topbar brand right={<><a className="icon-btn" href="#/scan" aria-label="Scan a hive label"><LuScanQrCode /></a><SyncChip /></>} />
       <p className="eyebrow" style={{ marginTop: 4 }}>{season.season} · {new Date().toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
       <h2 className="h2" style={{ marginTop: 4, fontSize: 26 }}>{name ? `Hello, ${name}` : 'Your apiaries'}</h2>
 

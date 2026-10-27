@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { LuCloud, LuDownload, LuLock, LuLogOut, LuRefreshCw, LuShieldCheck, LuTrash2, LuUser, LuPhone, LuMail } from 'react-icons/lu';
+import { LuQrCode, LuScanQrCode, LuCloud, LuDownload, LuLock, LuLogOut, LuRefreshCw, LuShieldCheck, LuTrash2, LuUser, LuPhone, LuMail } from 'react-icons/lu';
 import * as db from '../db';
 import type { Profile } from '../db';
 import { APP_VERSION } from '../config';
@@ -190,6 +190,12 @@ export function More() {
           <a className="btn danger" href="tel:112"><LuPhone /> Mobile 112</a>
         </div>
         <p className="small muted" style={{ margin: 0 }}>Scrape the sting out with a fingernail or card. Move away from the hive first.</p>
+      </div>
+
+      <h3 className="h2">Hive labels</h3>
+      <div className="grid-2">
+        <a className="btn secondary" href="#/labels"><LuQrCode /> Print labels</a>
+        <a className="btn secondary" href="#/scan"><LuScanQrCode /> Scan label</a>
       </div>
 
       <h3 className="h2">Your data</h3>

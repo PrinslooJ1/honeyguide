@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { LuHexagon, LuPencil, LuTrash2, LuTriangleAlert, LuCamera } from 'react-icons/lu';
+import { LuHexagon, LuPencil, LuTrash2, LuTriangleAlert, LuCamera, LuQrCode } from 'react-icons/lu';
 import * as db from '../db';
 import type { Apiary, Hive, Inspection, Photo } from '../db';
 import {
@@ -54,6 +54,8 @@ export function HiveDetail({ id }: { id: string }) {
         <a className="btn" href={`#/inspect/${id}`}><LuHexagon /> Inspect</a>
         <button className="btn secondary" onClick={() => setPhotoSheet(true)}><LuCamera /> Photo</button>
       </div>
+
+      <a className="btn ghost" href={`#/labels?hive=${id}`} style={{ marginTop: 10 }}><LuQrCode /> Print QR label</a>
 
       <h3 className="h2">About this hive</h3>
       <div className="card">

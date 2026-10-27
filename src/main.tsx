@@ -12,6 +12,8 @@ import { Log } from './screens/Log';
 import { More } from './screens/More';
 import { Onboarding } from './screens/Onboarding';
 import { LockScreen } from './screens/Lock';
+import { Labels } from './screens/Labels';
+import { CodeLink, Scan } from './screens/Scan';
 
 applyTheme();
 
@@ -58,6 +60,9 @@ function App() {
     flow = true;
   } else if (seg[0] === 'inspection') screen = <InspectionView id={seg[1]} />;
   else if (path === '/log') screen = <Log />;
+  else if (path === '/scan') screen = <Scan then={query.get('then') || undefined} />;
+  else if (seg[0] === 'h' && seg[1]) screen = <CodeLink code={decodeURIComponent(seg[1])} />;
+  else if (path === '/labels') screen = <Labels hiveId={query.get('hive') || undefined} apiaryId={query.get('apiary') || undefined} />;
   else if (path.startsWith('/more')) screen = <More />;
   else screen = <Home />;
 
